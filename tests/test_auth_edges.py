@@ -247,7 +247,8 @@ async def test_seal_not_mcp_and_ui_requires_session(
         )
         names = {t["name"] for t in listed["result"]["tools"]}
         assert "seal_pidge" not in names
-        assert "seal" not in names
+        assert "propose_seal" in names
+        assert not any(n == "seal" or n.startswith("seal_") for n in names)
 
         unauth = await client.post(f"/compose/{draft.id}/seal", data={})
         assert unauth.status in {302, 401, 403}

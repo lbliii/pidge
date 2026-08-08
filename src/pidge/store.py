@@ -21,6 +21,7 @@ from pidge.models import (
     NotePin,
     PidgeMessage,
     PidgeRecipient,
+    SealChallenge,
     User,
 )
 
@@ -165,10 +166,22 @@ CREATE TABLE IF NOT EXISTS note_pins (
     UNIQUE (owner_user_id, pidge_id)
 );
 
+CREATE TABLE IF NOT EXISTS seal_challenges (
+    id BIGSERIAL PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    pidge_id BIGINT NOT NULL REFERENCES pidges(id) ON DELETE CASCADE,
+    author_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_by_token_id BIGINT REFERENCES agent_tokens(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(token_hash, revoked_at);
 CREATE INDEX IF NOT EXISTS idx_agent_tokens_hash ON agent_tokens(token_hash, revoked_at);
 CREATE INDEX IF NOT EXISTS idx_pidges_author_state ON pidges(author_id, state, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_recipients_user ON pidge_recipients(loft_user_id, pidge_id);
+CREATE INDEX IF NOT EXISTS idx_seal_challenges_hash ON seal_challenges(token_hash);
 """
 
 
@@ -251,6 +264,19 @@ class Store(Protocol):
     def confirm_hold(self, hold_id: int, owner_user_id: int) -> Hold: ...
     def pin_note(self, pin: NotePin) -> NotePin: ...
     def list_pins(self, owner_user_id: int) -> tuple[NotePin, ...]: ...
+    def create_seal_challenge(
+        self,
+        *,
+        token_hash_value: str,
+        pidge_id: int,
+        author_user_id: int,
+        created_by_token_id: int | None,
+        expires_at: datetime,
+    ) -> SealChallenge: ...
+    def get_seal_challenge_by_hash(self, token_hash_value: str) -> SealChallenge | None: ...
+    def consume_seal_challenge(
+        self, token_hash_value: str, now: datetime
+    ) -> SealChallenge | None: ...
 
 
 def store_from_url(database_url: str | None) -> Store:
@@ -280,6 +306,8 @@ class MemoryStore:
         self._acts: dict[int, list[Act]] = {}
         self._holds: dict[int, Hold] = {}
         self._pins: dict[int, NotePin] = {}
+        self._seal_challenges: dict[int, SealChallenge] = {}
+        self._seal_by_hash: dict[str, int] = {}
         self._ids = {
             "user": 0,
             "contact": 0,
@@ -292,6 +320,7 @@ class MemoryStore:
             "hold": 0,
             "pin": 0,
             "agent": 0,
+            "seal_challenge": 0,
         }
 
     def close(self) -> None:
@@ -986,6 +1015,61 @@ class MemoryStore:
     def list_pins(self, owner_user_id: int) -> tuple[NotePin, ...]:
         with self._lock:
             return tuple(p for p in self._pins.values() if p.owner_user_id == owner_user_id)
+
+    def create_seal_challenge(
+        self,
+        *,
+        token_hash_value: str,
+        pidge_id: int,
+        author_user_id: int,
+        created_by_token_id: int | None,
+        expires_at: datetime,
+    ) -> SealChallenge:
+        with self._lock:
+            challenge_id = self._next("seal_challenge")
+            challenge = SealChallenge(
+                id=challenge_id,
+                token_hash=token_hash_value,
+                pidge_id=pidge_id,
+                author_user_id=author_user_id,
+                created_by_token_id=created_by_token_id,
+                expires_at=expires_at,
+                consumed_at=None,
+                created_at=datetime.now(UTC),
+            )
+            self._seal_challenges[challenge_id] = challenge
+            self._seal_by_hash[token_hash_value] = challenge_id
+            return challenge
+
+    def get_seal_challenge_by_hash(self, token_hash_value: str) -> SealChallenge | None:
+        with self._lock:
+            challenge_id = self._seal_by_hash.get(token_hash_value)
+            if challenge_id is None:
+                return None
+            return self._seal_challenges.get(challenge_id)
+
+    def consume_seal_challenge(
+        self, token_hash_value: str, now: datetime
+    ) -> SealChallenge | None:
+        with self._lock:
+            challenge_id = self._seal_by_hash.get(token_hash_value)
+            if challenge_id is None:
+                return None
+            challenge = self._seal_challenges[challenge_id]
+            if challenge.consumed_at is not None or challenge.expires_at <= now:
+                return None
+            updated = SealChallenge(
+                id=challenge.id,
+                token_hash=challenge.token_hash,
+                pidge_id=challenge.pidge_id,
+                author_user_id=challenge.author_user_id,
+                created_by_token_id=challenge.created_by_token_id,
+                expires_at=challenge.expires_at,
+                consumed_at=now,
+                created_at=challenge.created_at,
+            )
+            self._seal_challenges[challenge_id] = updated
+            return updated
 
 
 class PostgresStore:
@@ -1954,3 +2038,64 @@ class PostgresStore:
                 (owner_user_id,),
             ).fetchall()
         return tuple(NotePin(*row) for row in rows)
+
+    def create_seal_challenge(
+        self,
+        *,
+        token_hash_value: str,
+        pidge_id: int,
+        author_user_id: int,
+        created_by_token_id: int | None,
+        expires_at: datetime,
+    ) -> SealChallenge:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                INSERT INTO seal_challenges (
+                    token_hash, pidge_id, author_user_id, created_by_token_id, expires_at
+                )
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, token_hash, pidge_id, author_user_id, created_by_token_id,
+                          expires_at, consumed_at, created_at
+                """,
+                (
+                    token_hash_value,
+                    pidge_id,
+                    author_user_id,
+                    created_by_token_id,
+                    expires_at,
+                ),
+            ).fetchone()
+            conn.commit()
+        return SealChallenge(*row)
+
+    def get_seal_challenge_by_hash(self, token_hash_value: str) -> SealChallenge | None:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, token_hash, pidge_id, author_user_id, created_by_token_id,
+                       expires_at, consumed_at, created_at
+                FROM seal_challenges WHERE token_hash = %s
+                """,
+                (token_hash_value,),
+            ).fetchone()
+        return SealChallenge(*row) if row else None
+
+    def consume_seal_challenge(
+        self, token_hash_value: str, now: datetime
+    ) -> SealChallenge | None:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                UPDATE seal_challenges
+                SET consumed_at = %s
+                WHERE token_hash = %s
+                  AND consumed_at IS NULL
+                  AND expires_at > %s
+                RETURNING id, token_hash, pidge_id, author_user_id, created_by_token_id,
+                          expires_at, consumed_at, created_at
+                """,
+                (now, token_hash_value, now),
+            ).fetchone()
+            conn.commit()
+        return SealChallenge(*row) if row else None

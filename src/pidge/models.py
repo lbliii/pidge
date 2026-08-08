@@ -154,3 +154,15 @@ class NotePin:
     pidge_id: int
     title: str
     created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SealChallenge:
+    id: int
+    token_hash: str
+    pidge_id: int
+    author_user_id: int
+    created_by_token_id: int | None
+    expires_at: datetime
+    consumed_at: datetime | None
+    created_at: datetime

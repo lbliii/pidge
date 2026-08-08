@@ -75,6 +75,7 @@ def _setup_owner(service: PidgeService):
 def test_infer_preset_matches_draft_and_desk() -> None:
     assert infer_preset(TOKEN_PRESETS["draft"]) == "draft"
     assert infer_preset(DESK_SCOPES) == "desk"
+    assert infer_preset(TOKEN_PRESETS["confirm"]) == "confirm"
     assert infer_preset(frozenset({"pidge:draft", "pidge:enrich"})) is None
 
 
@@ -90,6 +91,15 @@ def test_preset_draft_mints_draft_only(service: PidgeService) -> None:
     minted = service.mint_agent_token(owner, label="Drafty", preset="draft")
     assert minted.token.scopes == frozenset({"pidge:draft"})
     assert infer_preset(minted.token.scopes) == "draft"
+
+
+def test_preset_confirm_mints_confirm_scopes(service: PidgeService) -> None:
+    owner = _setup_owner(service)
+    minted = service.mint_agent_token(owner, label="Confirm Bot", preset="confirm")
+    assert minted.token.scopes == TOKEN_PRESETS["confirm"]
+    assert infer_preset(minted.token.scopes) == "confirm"
+    assert "pidge:seal.propose" in minted.token.scopes
+    assert "pidge:seal" not in minted.token.scopes
 
 
 def test_unknown_preset_raises(service: PidgeService) -> None:
@@ -137,6 +147,7 @@ async def test_agents_mint_form_posts_preset(app, service: PidgeService) -> None
         assert agents.status == 200
         assert 'name="preset" value="desk"' in agents.text
         assert 'name="preset" value="draft"' in agents.text
+        assert 'name="preset" value="confirm"' in agents.text
         assert "coming soon" in agents.text.lower()
 
         minted = await client.post(
@@ -170,5 +181,5 @@ async def test_seal_tool_absent_from_tools_list(app, service: PidgeService) -> N
         payload = json.loads(listed.text)
         names = {t["name"] for t in payload["result"]["tools"]}
         assert "seal_pidge" not in names
-        assert "seal" not in names
-        assert not any("seal" in n for n in names)
+        assert "propose_seal" in names
+        assert not any(n == "seal" or n.startswith("seal_") for n in names)
