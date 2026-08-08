@@ -106,7 +106,8 @@ CREATE TABLE IF NOT EXISTS pidges (
     sealed_at TIMESTAMPTZ,
     seal_user_id BIGINT REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    supersedes_id BIGINT REFERENCES pidges(id)
 );
 
 CREATE TABLE IF NOT EXISTS pidge_recipients (
@@ -229,6 +230,10 @@ class Store(Protocol):
     ) -> PidgeMessage: ...
     def seal_pidge(self, pidge_id: int, seal_user_id: int, now: datetime) -> PidgeMessage: ...
     def discard_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage: ...
+    def revoke_sealed_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage: ...
+    def supersede_pidge(
+        self, pidge_id: int, now: datetime
+    ) -> tuple[PidgeMessage, PidgeMessage]: ...
     def get_pidge(self, pidge_id: int) -> PidgeMessage: ...
     def list_drafts(self, author_id: int) -> tuple[PidgeMessage, ...]: ...
     def list_inbox(self, user_id: int) -> tuple[PidgeMessage, ...]: ...
@@ -623,6 +628,7 @@ class MemoryStore:
                 created_at=now,
                 updated_at=now,
                 author_name=author.display_name,
+                supersedes_id=msg.supersedes_id,
             )
             self._pidges[pidge_id] = saved
             stored_recipients: list[PidgeRecipient] = []
@@ -661,6 +667,7 @@ class MemoryStore:
                 created_at=msg.created_at,
                 updated_at=datetime.now(UTC),
                 author_name=msg.author_name,
+                supersedes_id=msg.supersedes_id,
             )
             self._pidges[pidge_id] = updated
             return updated
@@ -686,6 +693,7 @@ class MemoryStore:
                 created_at=msg.created_at,
                 updated_at=now,
                 author_name=msg.author_name,
+                supersedes_id=msg.supersedes_id,
             )
             self._pidges[pidge_id] = updated
             return updated
@@ -708,9 +716,88 @@ class MemoryStore:
                 created_at=msg.created_at,
                 updated_at=now,
                 author_name=msg.author_name,
+                supersedes_id=msg.supersedes_id,
             )
             self._pidges[pidge_id] = updated
             return updated
+
+    def revoke_sealed_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage:
+        with self._lock:
+            msg = self._pidges[pidge_id]
+            if msg.state != "sealed":
+                raise PermissionError("Only sealed Pidges can be revoked.")
+            updated = PidgeMessage(
+                id=msg.id,
+                author_id=msg.author_id,
+                state="revoked",
+                summary=msg.summary,
+                intent=msg.intent,
+                slots=dict(msg.slots),
+                content_hash=msg.content_hash,
+                sealed_at=msg.sealed_at,
+                seal_user_id=msg.seal_user_id,
+                created_at=msg.created_at,
+                updated_at=now,
+                author_name=msg.author_name,
+                supersedes_id=msg.supersedes_id,
+            )
+            self._pidges[pidge_id] = updated
+            return updated
+
+    def supersede_pidge(
+        self, pidge_id: int, now: datetime
+    ) -> tuple[PidgeMessage, PidgeMessage]:
+        with self._lock:
+            msg = self._pidges[pidge_id]
+            if msg.state != "sealed":
+                raise PermissionError("Only sealed Pidges can be superseded.")
+            prior = PidgeMessage(
+                id=msg.id,
+                author_id=msg.author_id,
+                state="superseded",
+                summary=msg.summary,
+                intent=msg.intent,
+                slots=dict(msg.slots),
+                content_hash=msg.content_hash,
+                sealed_at=msg.sealed_at,
+                seal_user_id=msg.seal_user_id,
+                created_at=msg.created_at,
+                updated_at=now,
+                author_name=msg.author_name,
+                supersedes_id=msg.supersedes_id,
+            )
+            self._pidges[pidge_id] = prior
+            recipients = list(self._recipients.get(pidge_id, ()))
+
+        draft = self.create_pidge(
+            PidgeMessage(
+                id=0,
+                author_id=prior.author_id,
+                state="draft",
+                summary=prior.summary,
+                intent=prior.intent,
+                slots=dict(prior.slots),
+                content_hash=None,
+                sealed_at=None,
+                seal_user_id=None,
+                created_at=now,
+                updated_at=now,
+                author_name=prior.author_name,
+                supersedes_id=prior.id,
+            ),
+            [
+                PidgeRecipient(
+                    id=0,
+                    pidge_id=0,
+                    role=r.role,
+                    loft_user_id=r.loft_user_id,
+                    contact_id=r.contact_id,
+                    display_name=r.display_name,
+                )
+                for r in recipients
+            ],
+        )
+        return prior, draft
 
     def get_pidge(self, pidge_id: int) -> PidgeMessage:
         with self._lock:
@@ -919,6 +1006,19 @@ class PostgresStore:
                 """
                 INSERT INTO schema_migrations (version, name)
                 VALUES (1, 'initial')
+                ON CONFLICT (version) DO NOTHING
+                """
+            )
+            conn.execute(
+                """
+                ALTER TABLE pidges
+                ADD COLUMN IF NOT EXISTS supersedes_id BIGINT REFERENCES pidges(id)
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO schema_migrations (version, name)
+                VALUES (2, 'supersedes_id')
                 ON CONFLICT (version) DO NOTHING
                 """
             )
@@ -1325,12 +1425,19 @@ class PostgresStore:
         with self._pool.connection() as conn:
             row = conn.execute(
                 """
-                INSERT INTO pidges (author_id, state, summary, intent, slots)
-                VALUES (%s, %s, %s, %s, %s::jsonb)
+                INSERT INTO pidges (author_id, state, summary, intent, slots, supersedes_id)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s)
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 """,
-                (msg.author_id, msg.state, msg.summary, msg.intent, json.dumps(msg.slots)),
+                (
+                    msg.author_id,
+                    msg.state,
+                    msg.summary,
+                    msg.intent,
+                    json.dumps(msg.slots),
+                    msg.supersedes_id,
+                ),
             ).fetchone()
             author = conn.execute(
                 "SELECT display_name FROM users WHERE id = %s", (msg.author_id,)
@@ -1352,20 +1459,7 @@ class PostgresStore:
                     ),
                 )
             conn.commit()
-        return PidgeMessage(
-            id=row[0],
-            author_id=row[1],
-            state=row[2],
-            summary=row[3],
-            intent=row[4],
-            slots=row[5] if isinstance(row[5], dict) else json.loads(row[5]),
-            content_hash=row[6],
-            sealed_at=row[7],
-            seal_user_id=row[8],
-            created_at=row[9],
-            updated_at=row[10],
-            author_name=author[0] if author else "",
-        )
+        return self._message_from_row(row, author_name=author[0] if author else "")
 
     def update_pidge_slots(
         self, pidge_id: int, *, summary: str, slots: dict[str, Any], intent: str | None = None
@@ -1385,7 +1479,7 @@ class PostgresStore:
                 SET summary = %s, slots = %s::jsonb, intent = %s, updated_at = now()
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 """,
                 (summary, json.dumps(slots), new_intent, pidge_id),
             ).fetchone()
@@ -1393,27 +1487,14 @@ class PostgresStore:
                 "SELECT display_name FROM users WHERE id = %s", (row[1],)
             ).fetchone()
             conn.commit()
-        return PidgeMessage(
-            id=row[0],
-            author_id=row[1],
-            state=row[2],
-            summary=row[3],
-            intent=row[4],
-            slots=row[5] if isinstance(row[5], dict) else json.loads(row[5]),
-            content_hash=row[6],
-            sealed_at=row[7],
-            seal_user_id=row[8],
-            created_at=row[9],
-            updated_at=row[10],
-            author_name=author[0] if author else "",
-        )
+        return self._message_from_row(row, author_name=author[0] if author else "")
 
     def seal_pidge(self, pidge_id: int, seal_user_id: int, now: datetime) -> PidgeMessage:
         with self._pool.connection() as conn:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1433,7 +1514,7 @@ class PostgresStore:
                     seal_user_id = %s, updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 """,
                 (digest, now, seal_user_id, now, pidge_id),
             ).fetchone()
@@ -1441,27 +1522,14 @@ class PostgresStore:
                 "SELECT display_name FROM users WHERE id = %s", (updated[1],)
             ).fetchone()
             conn.commit()
-        return PidgeMessage(
-            id=updated[0],
-            author_id=updated[1],
-            state=updated[2],
-            summary=updated[3],
-            intent=updated[4],
-            slots=updated[5] if isinstance(updated[5], dict) else json.loads(updated[5]),
-            content_hash=updated[6],
-            sealed_at=updated[7],
-            seal_user_id=updated[8],
-            created_at=updated[9],
-            updated_at=updated[10],
-            author_name=author[0] if author else "",
-        )
+        return self._message_from_row(updated, author_name=author[0] if author else "")
 
     def discard_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage:
         with self._pool.connection() as conn:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1476,7 +1544,7 @@ class PostgresStore:
                 SET state = 'revoked', updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
                 """,
                 (now, pidge_id),
             ).fetchone()
@@ -1484,27 +1552,117 @@ class PostgresStore:
                 "SELECT display_name FROM users WHERE id = %s", (updated[1],)
             ).fetchone()
             conn.commit()
-        return PidgeMessage(
-            id=updated[0],
-            author_id=updated[1],
-            state=updated[2],
-            summary=updated[3],
-            intent=updated[4],
-            slots=updated[5] if isinstance(updated[5], dict) else json.loads(updated[5]),
-            content_hash=updated[6],
-            sealed_at=updated[7],
-            seal_user_id=updated[8],
-            created_at=updated[9],
-            updated_at=updated[10],
-            author_name=author[0] if author else "",
-        )
+        return self._message_from_row(updated, author_name=author[0] if author else "")
+
+    def revoke_sealed_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, author_id, state, summary, intent, slots, content_hash,
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                FROM pidges WHERE id = %s FOR UPDATE
+                """,
+                (pidge_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError(pidge_id)
+            if row[2] != "sealed":
+                raise PermissionError("Only sealed Pidges can be revoked.")
+            updated = conn.execute(
+                """
+                UPDATE pidges
+                SET state = 'revoked', updated_at = %s
+                WHERE id = %s
+                RETURNING id, author_id, state, summary, intent, slots, content_hash,
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                """,
+                (now, pidge_id),
+            ).fetchone()
+            author = conn.execute(
+                "SELECT display_name FROM users WHERE id = %s", (updated[1],)
+            ).fetchone()
+            conn.commit()
+        return self._message_from_row(updated, author_name=author[0] if author else "")
+
+    def supersede_pidge(
+        self, pidge_id: int, now: datetime
+    ) -> tuple[PidgeMessage, PidgeMessage]:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, author_id, state, summary, intent, slots, content_hash,
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                FROM pidges WHERE id = %s FOR UPDATE
+                """,
+                (pidge_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError(pidge_id)
+            if row[2] != "sealed":
+                raise PermissionError("Only sealed Pidges can be superseded.")
+            prior_row = conn.execute(
+                """
+                UPDATE pidges
+                SET state = 'superseded', updated_at = %s
+                WHERE id = %s
+                RETURNING id, author_id, state, summary, intent, slots, content_hash,
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                """,
+                (now, pidge_id),
+            ).fetchone()
+            author = conn.execute(
+                "SELECT display_name FROM users WHERE id = %s", (prior_row[1],)
+            ).fetchone()
+            author_name = author[0] if author else ""
+            slots = (
+                prior_row[5]
+                if isinstance(prior_row[5], dict)
+                else json.loads(prior_row[5])
+            )
+            draft_row = conn.execute(
+                """
+                INSERT INTO pidges
+                    (author_id, state, summary, intent, slots, supersedes_id)
+                VALUES (%s, 'draft', %s, %s, %s::jsonb, %s)
+                RETURNING id, author_id, state, summary, intent, slots, content_hash,
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                """,
+                (
+                    prior_row[1],
+                    prior_row[3],
+                    prior_row[4],
+                    json.dumps(slots),
+                    prior_row[0],
+                ),
+            ).fetchone()
+            recipients = conn.execute(
+                """
+                SELECT role, loft_user_id, contact_id, display_name
+                FROM pidge_recipients WHERE pidge_id = %s
+                """,
+                (pidge_id,),
+            ).fetchall()
+            for role, loft_user_id, contact_id, display_name in recipients:
+                conn.execute(
+                    """
+                    INSERT INTO pidge_recipients
+                        (pidge_id, role, loft_user_id, contact_id, display_name)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (draft_row[0], role, loft_user_id, contact_id, display_name),
+                )
+            conn.commit()
+        prior = self._message_from_row(prior_row, author_name=author_name)
+        draft = self._message_from_row(draft_row, author_name=author_name)
+        return prior, draft
 
     def get_pidge(self, pidge_id: int) -> PidgeMessage:
         with self._pool.connection() as conn:
             row = conn.execute(
                 """
                 SELECT p.id, p.author_id, p.state, p.summary, p.intent, p.slots, p.content_hash,
-                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, u.display_name
+                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id,
+                       u.display_name
                 FROM pidges p JOIN users u ON u.id = p.author_id
                 WHERE p.id = %s
                 """,
@@ -1512,20 +1670,7 @@ class PostgresStore:
             ).fetchone()
         if row is None:
             raise LookupError(pidge_id)
-        return PidgeMessage(
-            id=row[0],
-            author_id=row[1],
-            state=row[2],
-            summary=row[3],
-            intent=row[4],
-            slots=row[5] if isinstance(row[5], dict) else json.loads(row[5]),
-            content_hash=row[6],
-            sealed_at=row[7],
-            seal_user_id=row[8],
-            created_at=row[9],
-            updated_at=row[10],
-            author_name=row[11],
-        )
+        return self._row_to_pidge(row)
 
     def list_drafts(self, author_id: int) -> tuple[PidgeMessage, ...]:
         return self._list_pidges(author_id=author_id, state="draft")
@@ -1539,7 +1684,7 @@ class PostgresStore:
                 """
                 SELECT DISTINCT p.id, p.author_id, p.state, p.summary, p.intent, p.slots,
                        p.content_hash, p.sealed_at, p.seal_user_id, p.created_at, p.updated_at,
-                       u.display_name
+                       p.supersedes_id, u.display_name
                 FROM pidges p
                 JOIN users u ON u.id = p.author_id
                 JOIN pidge_recipients r ON r.pidge_id = p.id
@@ -1555,7 +1700,8 @@ class PostgresStore:
             rows = conn.execute(
                 """
                 SELECT p.id, p.author_id, p.state, p.summary, p.intent, p.slots, p.content_hash,
-                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, u.display_name
+                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id,
+                       u.display_name
                 FROM pidges p JOIN users u ON u.id = p.author_id
                 WHERE p.author_id = %s AND p.state = %s
                 ORDER BY p.updated_at DESC
@@ -1563,6 +1709,23 @@ class PostgresStore:
                 (author_id, state),
             ).fetchall()
         return tuple(self._row_to_pidge(row) for row in rows)
+
+    def _message_from_row(self, row: tuple[Any, ...], *, author_name: str) -> PidgeMessage:
+        return PidgeMessage(
+            id=row[0],
+            author_id=row[1],
+            state=row[2],
+            summary=row[3],
+            intent=row[4],
+            slots=row[5] if isinstance(row[5], dict) else json.loads(row[5]),
+            content_hash=row[6],
+            sealed_at=row[7],
+            seal_user_id=row[8],
+            created_at=row[9],
+            updated_at=row[10],
+            supersedes_id=row[11],
+            author_name=author_name,
+        )
 
     def _row_to_pidge(self, row: tuple[Any, ...]) -> PidgeMessage:
         return PidgeMessage(
@@ -1577,7 +1740,8 @@ class PostgresStore:
             seal_user_id=row[8],
             created_at=row[9],
             updated_at=row[10],
-            author_name=row[11],
+            supersedes_id=row[11],
+            author_name=row[12],
         )
 
     def recipients_for(self, pidge_id: int) -> tuple[PidgeRecipient, ...]:

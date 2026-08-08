@@ -92,6 +92,7 @@ class PidgeMessage:
     created_at: datetime
     updated_at: datetime
     author_name: str = ""
+    supersedes_id: int | None = None  # draft successor of a sealed/superseded prior
 
 
 @dataclass(frozen=True, slots=True)

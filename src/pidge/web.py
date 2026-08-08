@@ -461,11 +461,34 @@ def create_app(
             message=msg,
             recipients=service.store.recipients_for(msg.id),
             acts=service.store.list_acts(msg.id),
+            is_author=msg.author_id == user.id,
             is_recipient=any(
                 r.loft_user_id == user.id for r in service.store.recipients_for(msg.id)
             ),
             error=None,
         )
+
+    @app.route("/p/{pidge_id:int}/revoke", methods=["POST"], referenced=True)
+    async def revoke_sealed(request: Request, pidge_id: int):
+        user = _gate(request, require_human)
+        if isinstance(user, Response):
+            return user
+        try:
+            service.revoke_sealed_pidge(user, pidge_id)
+        except (PermissionError, LookupError):
+            return Response("Not found", status=404)
+        return Redirect(f"/p/{pidge_id}")
+
+    @app.route("/p/{pidge_id:int}/supersede", methods=["POST"], referenced=True)
+    async def supersede_sealed(request: Request, pidge_id: int):
+        user = _gate(request, require_human)
+        if isinstance(user, Response):
+            return user
+        try:
+            draft = service.supersede_pidge(user, pidge_id)
+        except (PermissionError, LookupError):
+            return Response("Not found", status=404)
+        return Redirect(f"/compose/{draft.id}")
 
     @app.route("/p/{pidge_id:int}/act", methods=["POST"], referenced=True)
     async def pidge_act(request: Request, pidge_id: int):
@@ -484,6 +507,7 @@ def create_app(
                 message=msg,
                 recipients=service.store.recipients_for(msg.id),
                 acts=service.store.list_acts(msg.id),
+                is_author=msg.author_id == user.id,
                 is_recipient=True,
                 error=str(exc),
             )

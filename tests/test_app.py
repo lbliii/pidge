@@ -417,6 +417,234 @@ async def test_discard_draft_via_compose_and_mcp(app, service: PidgeService) -> 
         assert service.store.list_drafts(owner.id) == ()
 
 
+def _seal_ready(service: PidgeService, owner, intent: str = "meet") -> object:
+    draft = service.draft_pidge(owner, intent=intent, recipient_names=["Lucy"])
+    return service.seal_pidge(
+        owner,
+        service.enrich_pidge(
+            owner,
+            draft.id,
+            who="Lucy",
+            when="tonight",
+            where="Nowadays",
+        ).id,
+    )
+
+
+async def test_author_can_revoke_sealed_pidge(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    sealed = _seal_ready(service, owner, intent="cancel later")
+    digest = sealed.content_hash
+    assert digest
+    assert sealed.id in {m.id for m in service.store.list_inbox(lucy.id)}
+    assert sealed.id in {m.id for m in service.store.list_sent(owner.id)}
+
+    revoked = service.revoke_sealed_pidge(owner, sealed.id)
+    assert revoked.state == "revoked"
+    assert revoked.content_hash == digest
+    assert service.store.list_inbox(lucy.id) == ()
+    assert service.store.list_sent(owner.id) == ()
+    still = service.store.get_pidge(sealed.id)
+    assert still.state == "revoked"
+    assert still.content_hash == digest
+
+
+async def test_non_author_cannot_revoke_sealed(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    sealed = _seal_ready(service, owner)
+    with pytest.raises(PermissionError, match="author"):
+        service.revoke_sealed_pidge(lucy, sealed.id)
+    assert service.store.get_pidge(sealed.id).state == "sealed"
+
+
+async def test_cannot_revoke_draft_via_sealed_path(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    service.register(username="lucy", display_name="Lucy", password="password-long")
+    draft = service.draft_pidge(owner, intent="not sealed", recipient_names=["Lucy"])
+    with pytest.raises(PermissionError, match="sealed"):
+        service.revoke_sealed_pidge(owner, draft.id)
+    assert service.store.get_pidge(draft.id).state == "draft"
+
+
+async def test_supersede_creates_linked_draft(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    sealed = _seal_ready(service, owner, intent="original plan")
+    digest = sealed.content_hash
+    draft = service.supersede_pidge(owner, sealed.id)
+    prior = service.store.get_pidge(sealed.id)
+    assert prior.state == "superseded"
+    assert prior.content_hash == digest
+    assert draft.state == "draft"
+    assert draft.supersedes_id == sealed.id
+    assert draft.intent == sealed.intent
+    assert draft.id != sealed.id
+    assert service.store.list_inbox(lucy.id) == ()
+    assert service.store.list_sent(owner.id) == ()
+    assert draft.id in {m.id for m in service.store.list_drafts(owner.id)}
+    recipients = service.store.recipients_for(draft.id)
+    assert any(r.loft_user_id == lucy.id for r in recipients)
+    flight = service.store.get_flight_for_pidge(draft.id)
+    assert flight is not None
+
+
+async def test_agents_cannot_revoke_or_supersede_via_mcp(
+    app, service: PidgeService
+) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    service.register(username="lucy", display_name="Lucy", password="password-long")
+    sealed = _seal_ready(service, owner)
+    minted = service.mint_agent_token(owner, label="Secretary")
+
+    async with TestClient(app) as client:
+        listed = await client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "method": "tools/list", "id": 1, "params": {}},
+            headers={"Authorization": f"Bearer {minted.secret}"},
+        )
+        names = {t["name"] for t in json.loads(listed.text)["result"]["tools"]}
+        assert "revoke_sealed_pidge" not in names
+        assert "revoke_pidge" not in names
+        assert "supersede_pidge" not in names
+        assert "discard_pidge" in names  # draft discard remains MCP-reachable
+
+        for tool_name in ("revoke_sealed_pidge", "supersede_pidge", "revoke_pidge"):
+            denied = await client.post(
+                "/mcp",
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "id": 2,
+                    "params": {
+                        "name": tool_name,
+                        "arguments": {"pidge_id": sealed.id},
+                    },
+                },
+                headers={"Authorization": f"Bearer {minted.secret}"},
+            )
+            body = json.loads(denied.text)
+            assert "error" in body or "error" in str(body.get("result", ""))
+
+        assert service.store.get_pidge(sealed.id).state == "sealed"
+
+
+async def test_revoke_and_supersede_via_thread_ui(app, service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    sealed = _seal_ready(service, owner, intent="ui revoke")
+    other = _seal_ready(service, owner, intent="ui supersede")
+    digest = sealed.content_hash
+
+    async with TestClient(app) as client:
+        login_page = await client.get("/login")
+        assert login_page.status == 200
+        chirp_cookie = _cookie(login_page, "chirp_session")
+        assert chirp_cookie is not None
+        login = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(login_page),
+                "username": "owner",
+                "password": "password-long",
+            },
+            headers={"Cookie": chirp_cookie},
+        )
+        assert login.status == 302
+        pidge_cookie = _cookie(login, SESSION_COOKIE)
+        updated_chirp = _cookie(login, "chirp_session") or chirp_cookie
+        assert pidge_cookie is not None
+        cookies = f"{updated_chirp}; {pidge_cookie}"
+
+        thread = await client.get(f"/p/{sealed.id}", headers={"Cookie": cookies})
+        assert thread.status == 200
+        assert "Revoke" in thread.text
+        assert "Supersede" in thread.text
+        assert "Discard draft" not in thread.text
+
+        revoked = await client.post(
+            f"/p/{sealed.id}/revoke",
+            data={"_csrf_token": _csrf(thread)},
+            headers={"Cookie": cookies},
+        )
+        assert revoked.status == 302
+        assert service.store.get_pidge(sealed.id).state == "revoked"
+        assert service.store.get_pidge(sealed.id).content_hash == digest
+        assert sealed.id not in {m.id for m in service.store.list_inbox(lucy.id)}
+        assert sealed.id not in {m.id for m in service.store.list_sent(owner.id)}
+
+        after = await client.get(f"/p/{sealed.id}", headers={"Cookie": cookies})
+        assert after.status == 200
+        assert "revoked" in after.text.lower()
+
+        other_thread = await client.get(f"/p/{other.id}", headers={"Cookie": cookies})
+        assert other_thread.status == 200
+        superseded = await client.post(
+            f"/p/{other.id}/supersede",
+            data={"_csrf_token": _csrf(other_thread)},
+            headers={"Cookie": cookies},
+        )
+        assert superseded.status == 302
+        location = next(
+            (v for h, v in superseded.headers if h.lower() == "location"),
+            "",
+        )
+        assert location.startswith("/compose/")
+        draft_id = int(location.rsplit("/", 1)[-1])
+        assert service.store.get_pidge(other.id).state == "superseded"
+        draft = service.store.get_pidge(draft_id)
+        assert draft.state == "draft"
+        assert draft.supersedes_id == other.id
+        compose = await client.get(location, headers={"Cookie": cookies})
+        assert compose.status == 200
+        assert f"#{other.id}" in compose.text
+
+
 async def test_ready_endpoint(app) -> None:
     async with TestClient(app) as client:
         response = await client.get("/ready")

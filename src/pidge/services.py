@@ -432,6 +432,41 @@ class PidgeService:
             raise PermissionError("Only drafts can be discarded.")
         return self.store.discard_pidge(pidge_id, datetime.now(UTC))
 
+    def revoke_sealed_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
+        """Author-only revoke of a sealed Pidge (session UI). Preserves content_hash."""
+        msg = self.store.get_pidge(pidge_id)
+        if msg.author_id != user.id:
+            raise PermissionError("Only the author can revoke this Pidge.")
+        if msg.state != "sealed":
+            raise PermissionError("Only sealed Pidges can be revoked.")
+        return self.store.revoke_sealed_pidge(pidge_id, datetime.now(UTC))
+
+    def supersede_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
+        """Mark sealed as superseded; return a new draft linked via supersedes_id."""
+        msg = self.store.get_pidge(pidge_id)
+        if msg.author_id != user.id:
+            raise PermissionError("Only the author can supersede this Pidge.")
+        if msg.state != "sealed":
+            raise PermissionError("Only sealed Pidges can be superseded.")
+        _prior, draft = self.store.supersede_pidge(pidge_id, datetime.now(UTC))
+        recipients = self.store.recipients_for(draft.id)
+        steps = [
+            FlightStep(
+                0,
+                0,
+                "who",
+                "Resolve recipients",
+                ", ".join(r.display_name for r in recipients),
+                "pending",
+                0,
+            ),
+            FlightStep(0, 0, "when", "Parse time", "pending", "pending", 1),
+            FlightStep(0, 0, "where", "Find place", "pending", "pending", 2),
+            FlightStep(0, 0, "extras", "Gather extras", "pending", "pending", 3),
+        ]
+        self.store.create_flight(Flight(0, draft.id, "pending", datetime.now(UTC)), steps)
+        return draft
+
     def get_pidge_for(self, user: User, pidge_id: int) -> PidgeMessage:
         msg = self.store.get_pidge(pidge_id)
         if msg.author_id == user.id:
