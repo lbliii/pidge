@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compose — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  </head>
+  <body>
+    <div
+      class="shell"
+      x-data="{
+        text: 'Tell Lucy we’re meeting tonight at 7 at Nowadays',
+        step: 'dictate',
+        ride: [
+          { id: 'who', label: 'Resolve Lucy', detail: 'contact match', state: 'pending' },
+          { id: 'when', label: 'Parse time', detail: 'tonight · 7:00 PM', state: 'pending' },
+          { id: 'where', label: 'Find Nowadays', detail: 'place · Brooklyn', state: 'pending' },
+          { id: 'menu', label: 'Fetch menu', detail: 'kitchen + wine', state: 'pending' }
+        ],
+        startFly() {
+          if (this.step !== 'dictate') return;
+          this.step = 'flying';
+          this.ride.forEach((r) => (r.state = 'pending'));
+          const run = (i) => {
+            if (i >= this.ride.length) {
+              this.step = 'ready';
+              return;
+            }
+            this.ride[i].state = 'active';
+            setTimeout(() => {
+              this.ride[i].state = 'done';
+              run(i + 1);
+            }, 520);
+          };
+          run(0);
+        }
+      }"
+    >
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+                <nav class="nav" aria-label="Primary">
+          <a href="inbox.html">Inbox</a>
+          <a href="compose.html" aria-current="page">Compose</a>
+          <a href="lucy.html">Lucy’s view</a>
+          <a href="thread.html">Thread</a>
+        </nav>
+      </header>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Dictate → fly → seal</p>
+          <h1>New Pidge</h1>
+        </div>
+      </div>
+
+      <div class="steps-rail" aria-label="Compose progress">
+        <span class="step-chip" :class="step === 'dictate' ? 'is-active' : 'is-done'">1 Dictate</span>
+        <span class="step-chip" :class="step === 'flying' ? 'is-active' : (step === 'ready' ? 'is-done' : '')">2 Fly</span>
+        <span class="step-chip" :class="step === 'ready' ? 'is-active' : ''">3 Seal</span>
+      </div>
+
+      <div class="thread-layout">
+        <div class="compose-panel">
+          <label for="intent">To your agent</label>
+          <textarea id="intent" x-model="text" :disabled="step !== 'dictate'"></textarea>
+          <p class="hint">
+            Say it like a human. Your agent flies out for who / when / where /
+            extras — then you seal the message object.
+          </p>
+
+          <div class="flight-track" x-show="step === 'flying'" x-cloak>
+            <span></span>
+          </div>
+
+          <ul class="ride-log" x-show="step !== 'dictate'" x-cloak>
+            <template x-for="item in ride" :key="item.id">
+              <li :class="'is-' + item.state">
+                <span class="ride-dot" aria-hidden="true"></span>
+                <span x-text="item.label"></span>
+                <span class="mono" x-text="item.state === 'done' ? 'ok' : item.detail"></span>
+              </li>
+            </template>
+          </ul>
+
+          <div class="actions" style="margin-top: 1rem">
+            <button
+              type="button"
+              class="btn btn-seal"
+              x-show="step === 'dictate'"
+              @click="startFly()"
+            >
+              Fly &amp; enrich
+            </button>
+            <a
+              class="btn btn-seal"
+              href="sent.html"
+              x-show="step === 'ready'"
+              x-cloak
+            >
+              Seal &amp; send to Lucy
+            </a>
+            <button
+              type="button"
+              class="btn btn-ghost"
+              x-show="step !== 'dictate'"
+              @click="step = 'dictate'; ride.forEach(r => r.state = 'pending')"
+            >
+              Edit dictate
+            </button>
+          </div>
+        </div>
+
+        <article class="bubble">
+          <header>
+            <span class="from" x-text="step === 'ready' ? 'Ready to seal' : (step === 'flying' ? 'In flight…' : 'Preview')"></span>
+            <span class="verified" x-show="step === 'ready'" x-cloak>Packed</span>
+          </header>
+          <p class="intent" x-text="'“' + text + '”'"></p>
+          <div class="cards">
+            <div class="card" :class="ride[0].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
+              <h3>Who</h3>
+              <p x-text="ride[0].state === 'done' || step === 'dictate' ? 'Lucy' : '…'"></p>
+              <p class="mono" x-text="ride[0].state === 'done' ? 'lucy@pidge.app' : 'resolving'"></p>
+            </div>
+            <div class="card" :class="ride[1].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
+              <h3>When</h3>
+              <p x-text="ride[1].state === 'done' || step === 'dictate' ? 'Tonight · 7:00 PM' : '…'"></p>
+              <p class="mono">America/New_York</p>
+            </div>
+            <div class="card map-card" :class="ride[2].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
+              <h3>Where</h3>
+              <div class="map-pin" aria-hidden="true"></div>
+              <p x-text="ride[2].state === 'done' || step === 'dictate' ? 'Nowadays' : '…'"></p>
+              <p class="mono" x-text="ride[2].state === 'done' ? '56 Bogart St, Brooklyn' : 'matching place'"></p>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 0.75rem" :class="ride[3].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''" x-show="step !== 'dictate'" x-cloak>
+            <h3>Menu</h3>
+            <p x-text="ride[3].state === 'done' ? 'Kitchen + natural wine' : 'Fetching…'"></p>
+            <p class="mono" x-text="ride[3].state === 'done' ? 'fresh · 2h cache' : 'agent in flight'"></p>
+          </div>
+        </article>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · compose flow</span>
+        <span>Dictate → fly → seal</span>
+      </footer>
+    </div>
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </body>
+</html>

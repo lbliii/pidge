@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sent — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+                <nav class="nav" aria-label="Primary">
+          <a href="inbox.html">Inbox</a>
+          <a href="compose.html">Compose</a>
+          <a href="lucy.html">Lucy’s view</a>
+          <a href="thread.html">Thread</a>
+        </nav>
+      </header>
+
+      <div class="sent-hero">
+        <p class="kicker">Away</p>
+        <h1>It’s flying to Lucy</h1>
+        <p>
+          Sealed invite <span class="mono">pidge:msg_8f3a</span> is on her
+          graph. You’ll see the RSVP land in your thread.
+        </p>
+        <div class="actions" style="justify-content: center">
+          <a class="btn btn-seal" href="lucy.html">Open as Lucy</a>
+          <a class="btn btn-ghost" href="thread.html">Your thread</a>
+        </div>
+      </div>
+
+      <div class="bubble" style="max-width: 36rem; margin: 0 auto 3rem">
+        <header>
+          <span class="from">Delivery</span>
+          <span class="verified">Sealed</span>
+        </header>
+        <ul class="timeline">
+          <li><time>6:12:01</time><span>Dictation packed</span></li>
+          <li><time>6:12:03</time><span>Enrichment sealed (who · when · where · menu)</span></li>
+          <li><time>6:12:04</time><span>Delivered to lucy@pidge.app</span></li>
+          <li><time>—</time><span>Waiting on RSVP…</span></li>
+        </ul>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · sent</span>
+        <span>Next: recipient graph</span>
+      </footer>
+    </div>
+  </body>
+</html>

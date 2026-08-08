@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Invite for Lucy — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  </head>
+  <body>
+    <div
+      class="shell"
+      x-data="{
+        phase: 'invite',
+        checking: false,
+        accept() {
+          this.checking = true;
+          setTimeout(() => { this.checking = false; this.phase = 'accepted'; }, 900);
+        }
+      }"
+    >
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+                <nav class="nav" aria-label="Primary">
+          <a href="inbox.html">Inbox</a>
+          <a href="compose.html">Compose</a>
+          <a href="lucy.html" aria-current="page">Lucy’s view</a>
+          <a href="thread.html">Thread</a>
+        </nav>
+      </header>
+
+      <div class="recipient-bar">
+        <div>
+          <strong>Lucy’s Pidge</strong>
+          <div class="mono" style="font-size: 0.8rem; color: var(--mist)">lucy@pidge.app · recipient graph</div>
+        </div>
+        <a class="btn btn-ghost" href="thread.html">Jump to sender thread</a>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Invite · sealed</p>
+          <h1>Tonight at Nowadays</h1>
+        </div>
+      </div>
+
+      <div class="thread-layout">
+        <article class="bubble" x-show="phase === 'invite'">
+          <header>
+            <div>
+              <span class="from">From you</span>
+              <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
+                via their agent · pidge:msg_8f3a
+              </div>
+            </div>
+            <span class="verified">Sealed · verified</span>
+          </header>
+
+          <p class="intent">
+            “Tell Lucy we’re meeting tonight at 7pm at Nowadays.”
+          </p>
+
+          <div class="cards">
+            <div class="card">
+              <h3>When</h3>
+              <p>Tonight · 7:00 PM</p>
+              <p class="mono">America/New_York</p>
+            </div>
+            <div class="card map-card">
+              <h3>Where</h3>
+              <div class="map-pin" aria-hidden="true"></div>
+              <p>Nowadays</p>
+              <p class="mono">56 Bogart St, Brooklyn</p>
+            </div>
+            <div class="card">
+              <h3>Menu</h3>
+              <p>Kitchen + natural wine</p>
+              <p class="mono">tap for full card</p>
+            </div>
+          </div>
+
+          <div class="flight-track" x-show="checking" x-cloak style="margin-top: 1.1rem">
+            <span></span>
+          </div>
+          <p class="hint" x-show="checking" x-cloak style="margin-top: 0.35rem">
+            Lucy’s agent checking calendar for conflicts…
+          </p>
+
+          <div class="rsvp-choice" x-show="!checking">
+            <button type="button" class="is-yes" @click="accept()">Accept</button>
+            <button type="button" @click="phase = 'maybe'">Maybe</button>
+            <button type="button" @click="phase = 'declined'">Decline</button>
+          </div>
+        </article>
+
+        <article class="bubble" x-show="phase === 'accepted'" x-cloak>
+          <p class="confetti-line">You’re in</p>
+          <header>
+            <span class="from">RSVP sealed</span>
+            <span class="verified">Verified</span>
+          </header>
+          <p class="intent" style="margin-bottom: 0.5rem">Accepted · no conflicts</p>
+          <p style="margin: 0 0 1rem; color: var(--ink-soft)">
+            Calendar event created on Lucy’s graph. Sender thread updated.
+          </p>
+          <ul class="timeline">
+            <li><time>6:14:02</time><span>Calendar clear</span></li>
+            <li><time>6:14:03</time><span>Event written</span></li>
+            <li><time>6:14:03</time><span>RSVP Envelope → you</span></li>
+          </ul>
+          <div class="actions">
+            <a class="btn btn-seal" href="thread.html">See sender thread</a>
+            <a class="btn btn-ghost" href="inbox.html">Lucy’s inbox</a>
+          </div>
+        </article>
+
+        <article class="bubble" x-show="phase === 'maybe'" x-cloak>
+          <header>
+            <span class="from">Maybe</span>
+            <span class="verified">Noted</span>
+          </header>
+          <p style="margin: 0; color: var(--ink-soft)">
+            Tentative hold placed. Lucy can upgrade to Accept anytime.
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-seal" @click="phase = 'invite'">Back</button>
+          </div>
+        </article>
+
+        <article class="bubble" x-show="phase === 'declined'" x-cloak>
+          <header>
+            <span class="from">Declined</span>
+          </header>
+          <p style="margin: 0; color: var(--ink-soft)">
+            Sealed decline rides back — no guilt prose required.
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" @click="phase = 'invite'">Back</button>
+          </div>
+        </article>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · recipient flow</span>
+        <span>Verify → act → seal RSVP</span>
+      </footer>
+    </div>
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </body>
+</html>

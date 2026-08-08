@@ -1,0 +1,288 @@
+/* Flow extras — deeper Pidge journey */
+
+.steps-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 1.25rem;
+}
+
+.step-chip {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  color: var(--mist);
+  background: color-mix(in oklab, var(--card) 80%, transparent);
+  border: 1px solid var(--line);
+}
+
+.step-chip.is-done {
+  color: var(--stable);
+  border-color: color-mix(in oklab, var(--stable) 35%, transparent);
+  background: color-mix(in oklab, var(--stable) 12%, white);
+}
+
+.step-chip.is-active {
+  color: var(--leather-deep);
+  border-color: var(--bay);
+  background: color-mix(in oklab, var(--flax) 28%, white);
+}
+
+.ride-log {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ride-log li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--paper) 70%, white);
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.ride-log li.is-pending {
+  opacity: 0.55;
+}
+
+.ride-log li.is-active {
+  border-color: color-mix(in oklab, var(--bay) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--flax) 40%, transparent);
+}
+
+.ride-log li.is-done {
+  border-color: color-mix(in oklab, var(--stable) 30%, transparent);
+}
+
+.ride-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--mist);
+}
+
+.is-active .ride-dot {
+  background: var(--bay);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+.is-done .ride-dot {
+  background: var(--stable);
+  animation: none;
+}
+
+@keyframes pulse-dot {
+  50% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+}
+
+.ride-log .mono {
+  font-size: 0.78rem;
+  color: var(--mist);
+}
+
+.card.is-skel {
+  min-height: 7.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card.is-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--flax) 25%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: sheen 1.2s ease-in-out infinite;
+}
+
+@keyframes sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.card.is-skel p,
+.card.is-skel h3,
+.card.is-skel .map-pin {
+  opacity: 0.25;
+}
+
+.sent-hero {
+  text-align: center;
+  padding: 3rem 0 2rem;
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.sent-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 800;
+  margin: 0 0 0.75rem;
+}
+
+.sent-hero p {
+  color: var(--ink-soft);
+  margin: 0 0 1.5rem;
+}
+
+.flight-track {
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in oklab, var(--leather) 12%, transparent);
+  overflow: hidden;
+  margin: 0 0 1.5rem;
+}
+
+.flight-track > span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--bay), var(--flax));
+  animation: wingbeat 1.1s ease-in-out infinite;
+}
+
+@keyframes wingbeat {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.recipient-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--leather) 8%, var(--card-raised));
+  border: 1px solid color-mix(in oklab, var(--leather) 14%, transparent);
+}
+
+.recipient-bar strong {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.timeline time {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--mist);
+}
+
+.rsvp-choice {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.rsvp-choice button {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+  padding: 0.85rem 0.5rem;
+  border-radius: 12px;
+  border: 1.5px solid color-mix(in oklab, var(--leather) 22%, transparent);
+  background: var(--card-raised);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 160ms var(--ease), border-color 160ms var(--ease), transform 160ms var(--ease);
+}
+
+.rsvp-choice button:hover {
+  transform: translateY(-1px);
+  border-color: var(--bay);
+}
+
+.rsvp-choice button.is-yes {
+  background: var(--leather-deep);
+  color: #f6efe6;
+  border-color: var(--leather-deep);
+}
+
+.rsvp-choice button.is-yes:hover {
+  background: var(--bay);
+  color: #fff8f0;
+}
+
+.confetti-line {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 1.4rem;
+  color: var(--bay);
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .rsvp-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline li {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight-track > span,
+  .card.is-skel::after,
+  .is-active .ride-dot {
+    animation: none !important;
+  }
+
+  .flight-track > span {
+    width: 100%;
+    transform: none;
+  }
+}

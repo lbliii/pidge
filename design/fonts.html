@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Font options — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Semi+Condensed:wght@600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;600;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=Manrope:wght@400;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Rubik:wght@500;700&family=Source+Sans+3:wght@400;600;700&family=Syne:wght@700;750&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .font-grid {
+        display: grid;
+        gap: 1.25rem;
+        padding-bottom: 3rem;
+      }
+      .font-card {
+        background: var(--card-raised);
+        border: 1px solid color-mix(in oklab, var(--leather) 14%, transparent);
+        border-radius: var(--radius);
+        padding: 1.25rem 1.35rem;
+      }
+      .font-card.current {
+        border-color: var(--bay);
+        box-shadow: 0 0 0 1px color-mix(in oklab, var(--bay) 40%, transparent);
+      }
+      .font-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+      }
+      .font-meta code {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--ink-soft);
+      }
+      .sample-brand {
+        font-size: 2.4rem;
+        font-weight: 750;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        margin: 0 0 0.35rem;
+      }
+      .sample-brand i {
+        font-style: normal;
+        color: var(--bay);
+      }
+      .sample-head {
+        font-size: 1.55rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.45rem;
+      }
+      .sample-body {
+        margin: 0;
+        color: var(--ink-soft);
+        max-width: 36rem;
+      }
+      .pair-a {
+        --d: "Barlow Semi Condensed", system-ui, sans-serif;
+        --b: "Source Sans 3", system-ui, sans-serif;
+      }
+      .pair-b {
+        --d: "Fraunces", Georgia, serif;
+        --b: "Instrument Sans", system-ui, sans-serif;
+      }
+      .pair-c {
+        --d: "Rubik", system-ui, sans-serif;
+        --b: "Atkinson Hyperlegible", system-ui, sans-serif;
+      }
+      .pair-d {
+        --d: "Instrument Sans", system-ui, sans-serif;
+        --b: "Literata", Georgia, serif;
+      }
+      .pair-e {
+        --d: "Syne", system-ui, sans-serif;
+        --b: "Manrope", system-ui, sans-serif;
+      }
+      .pair-a .sample-brand,
+      .pair-a .sample-head,
+      .pair-b .sample-brand,
+      .pair-b .sample-head,
+      .pair-c .sample-brand,
+      .pair-c .sample-head,
+      .pair-d .sample-brand,
+      .pair-d .sample-head,
+      .pair-e .sample-brand,
+      .pair-e .sample-head {
+        font-family: var(--d);
+      }
+      .pair-a .sample-body,
+      .pair-b .sample-body,
+      .pair-c .sample-body,
+      .pair-d .sample-body,
+      .pair-e .sample-body {
+        font-family: var(--b);
+      }
+      .pair-b .sample-brand {
+        font-variation-settings: "SOFT" 50, "WONK" 0.4;
+      }
+      .note {
+        color: var(--ink-soft);
+        margin: 0 0 1.25rem;
+        max-width: 40rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+                <nav class="nav" aria-label="Primary">
+          <a href="inbox.html">Inbox</a>
+          <a href="compose.html">Compose</a>
+          <a href="lucy.html">Lucy’s view</a>
+          <a href="thread.html">Thread</a>
+          <a href="fonts.html" aria-current="page">Fonts</a>
+        </nav>
+      </header>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Type exploration</p>
+          <h1>Font options</h1>
+        </div>
+      </div>
+      <p class="note">
+        Syne + Manrope reads “password vault.” Below are pairings with more
+        pidge / mail / messenger energy. <strong>A is now live</strong> on the
+        other pages — pick a favorite and we lock it.
+      </p>
+
+      <div class="font-grid">
+        <article class="font-card pair-a current">
+          <div class="font-meta">
+            <strong>A · Flight card (current)</strong>
+            <code>Barlow Semi Condensed + Source Sans 3</code>
+          </div>
+          <p class="sample-brand">Pid<i>ge</i></p>
+          <p class="sample-head">Mail that means something.</p>
+          <p class="sample-body">
+            Tell Lucy we’re meeting tonight at 7 at Nowadays — place, map, and
+            menu ride along in the message.
+          </p>
+        </article>
+
+        <article class="font-card pair-b">
+          <div class="font-meta">
+            <strong>B · Soft coop loft</strong>
+            <code>Fraunces + Instrument Sans</code>
+          </div>
+          <p class="sample-brand">Pid<i>ge</i></p>
+          <p class="sample-head">Mail that means something.</p>
+          <p class="sample-body">
+            Tell Lucy we’re meeting tonight at 7 at Nowadays — place, map, and
+            menu ride along in the message.
+          </p>
+        </article>
+
+        <article class="font-card pair-c">
+          <div class="font-meta">
+            <strong>C · Friendly hustle</strong>
+            <code>Rubik + Atkinson Hyperlegible</code>
+          </div>
+          <p class="sample-brand">Pid<i>ge</i></p>
+          <p class="sample-head">Mail that means something.</p>
+          <p class="sample-body">
+            Tell Lucy we’re meeting tonight at 7 at Nowadays — place, map, and
+            menu ride along in the message.
+          </p>
+        </article>
+
+        <article class="font-card pair-d">
+          <div class="font-meta">
+            <strong>D · Letter you want to read</strong>
+            <code>Instrument Sans + Literata</code>
+          </div>
+          <p class="sample-brand">Pid<i>ge</i></p>
+          <p class="sample-head">Mail that means something.</p>
+          <p class="sample-body">
+            Tell Lucy we’re meeting tonight at 7 at Nowadays — place, map, and
+            menu ride along in the message.
+          </p>
+        </article>
+
+        <article class="font-card pair-e">
+          <div class="font-meta">
+            <strong>E · Old pair (password-keeper)</strong>
+            <code>Syne + Manrope</code>
+          </div>
+          <p class="sample-brand">Pid<i>ge</i></p>
+          <p class="sample-head">Mail that means something.</p>
+          <p class="sample-body">
+            Tell Lucy we’re meeting tonight at 7 at Nowadays — place, map, and
+            menu ride along in the message.
+          </p>
+        </article>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · type study</span>
+        <a href="index.html">Back to landing</a>
+      </footer>
+    </div>
+  </body>
+</html>
