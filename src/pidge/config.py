@@ -18,15 +18,19 @@ DESK_SCOPES = frozenset(
     }
 )
 
+# Confirm = Desk + propose_seal (human still seals via one-shot challenge URL).
+CONFIRM_SCOPES = DESK_SCOPES | frozenset({"pidge:seal.propose"})
+
 TOKEN_PRESETS: dict[str, frozenset[str]] = {
     "draft": frozenset({"pidge:draft"}),
     "desk": DESK_SCOPES,
+    "confirm": CONFIRM_SCOPES,
 }
 
 DEFAULT_TOKEN_PRESET = "desk"
 
-# Registerable scopes for agent tokens. Seal scopes are intentionally absent.
-ALL_AGENT_SCOPES = DESK_SCOPES
+# Registerable scopes for agent tokens. Autopilot pidge:seal is intentionally absent.
+ALL_AGENT_SCOPES = CONFIRM_SCOPES
 
 # Backward-compatible alias; prefer DESK_SCOPES / ALL_AGENT_SCOPES at call sites.
 AGENT_SCOPES = DESK_SCOPES

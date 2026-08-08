@@ -59,9 +59,9 @@
       <input type="radio" name="preset" value="draft" {% if default_preset == "draft" %}checked{% end %}>
       <strong>Draft</strong> — <code>pidge:draft</code> only
     </label>
-    <label style="display:block;margin-bottom:0.5rem;opacity:0.55;cursor:not-allowed">
-      <input type="radio" disabled>
-      <strong>Confirm</strong> — coming soon
+    <label style="display:block;margin-bottom:0.5rem">
+      <input type="radio" name="preset" value="confirm" {% if default_preset == "confirm" %}checked{% end %}>
+      <strong>Confirm</strong> — Desk + propose seal (one-shot human challenge URL)
     </label>
     <label style="display:block;opacity:0.55;cursor:not-allowed">
       <input type="radio" disabled>

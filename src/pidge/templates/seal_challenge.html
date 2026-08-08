@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block title %}Confirm seal #{{ message.id }} — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">One-shot seal challenge</p>
+    <h1>Confirm draft #{{ message.id }}</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<div class="thread-layout">
+  <div class="compose-panel">
+    <p class="hint">Intent</p>
+    <p><strong>{{ message.intent }}</strong></p>
+    <p class="hint">Summary</p>
+    <p>{{ message.summary }}</p>
+    <p class="hint">Recipients</p>
+    <ul>{% for r in recipients %}<li>{{ r.display_name }}</li>{% end %}</ul>
+    <div id="compose-live" class="compose-live">
+      <p class="hint">Slots</p>
+      <ul class="slot-list">
+        {% for key in ("who", "when", "where") %}
+        {% set slot = message.slots.get(key, {"status": "pending", "value": None}) %}
+        <li class="slot-row is-{{ slot.status }}">
+          <code>{{ key }}</code>
+          <span class="slot-status">{{ slot.status }}</span>
+          {% if slot.value %}<span class="mono">{{ slot.value }}</span>{% elif slot.status == "none" %}<span class="mono">marked none</span>{% else %}<span class="mono">waiting</span>{% end %}
+        </li>
+        {% end %}
+        {% if message.slots.get("extras") %}
+        <li class="slot-row is-{{ message.slots['extras'].status }}">
+          <code>extras</code>
+          <span class="slot-status">{{ message.slots['extras'].status }}</span>
+          <span class="mono">{{ message.slots['extras'].value }}</span>
+        </li>
+        {% end %}
+      </ul>
+      {% if message.state == "draft" and can_seal %}
+      <p class="hint seal-ready">Your agent proposed this seal. Confirm to send.</p>
+      <form method="post" action="/compose/{{ message.id }}/seal-challenge/{{ challenge_token }}">
+        {{ csrf_field() }}
+        <button class="btn btn-seal" type="submit">Confirm seal</button>
+      </form>
+      {% elif message.state == "draft" %}
+      <p class="hint seal-blocked">{{ seal_block_reason or "Slots are no longer ready to seal." }}</p>
+      <button class="btn btn-seal" type="button" disabled>Confirm seal</button>
+      {% else %}
+      <p class="hint">Already sealed. <a href="/p/{{ message.id }}">Open thread</a></p>
+      {% end %}
+    </div>
+  </div>
+</div>
+{% end %}

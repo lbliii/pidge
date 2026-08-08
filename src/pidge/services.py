@@ -28,11 +28,13 @@ from pidge.models import (
     NotePin,
     PidgeMessage,
     PidgeRecipient,
+    SealChallenge,
     User,
 )
 from pidge.store import Store, token_hash
 
 SESSION_TTL = timedelta(days=30)
+SEAL_CHALLENGE_TTL = timedelta(minutes=15)
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{2,31}$")
 REQUIRED_SLOTS = ("who", "when", "where")
 
@@ -47,6 +49,15 @@ class SetupResult:
 class AgentTokenResult:
     token: AgentToken
     secret: str
+
+
+@dataclass(frozen=True, slots=True)
+class SealProposeResult:
+    challenge: SealChallenge
+    secret: str
+    seal_url: str
+    message: PidgeMessage
+    recipients: tuple[PidgeRecipient, ...]
 
 
 class PidgeService:
@@ -393,14 +404,21 @@ class PidgeService:
                 summary = " · ".join(parts)[:200]
         return self.store.update_pidge_slots(pidge_id, summary=summary, slots=slots)
 
-    def seal_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
+    def ready_to_seal(self, user: User, pidge_id: int) -> PidgeMessage:
+        """Shared precheck for UI seal and propose_seal / challenge redeem."""
         msg = self.store.get_pidge(pidge_id)
         if msg.author_id != user.id:
             raise PermissionError("Only the author can seal this Pidge.")
+        if msg.state != "draft":
+            raise PermissionError("Only drafts can be sealed.")
         for key in REQUIRED_SLOTS:
             slot = msg.slots.get(key)
             if not isinstance(slot, dict) or slot.get("status") not in {"ready", "none"}:
                 raise ValueError(f"Slot {key!r} must be filled or marked none before seal.")
+        return msg
+
+    def seal_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
+        self.ready_to_seal(user, pidge_id)
         sealed = self.store.seal_pidge(pidge_id, user.id, datetime.now(UTC))
         # Auto-confirm calendar hold for author when when/where present
         when_slot = sealed.slots.get("when", {})
@@ -423,6 +441,73 @@ class PidgeService:
                 )
             )
         return sealed
+
+    def propose_seal(
+        self,
+        user: User,
+        pidge_id: int,
+        *,
+        agent_token_id: int | None = None,
+        public_origin: str | None = None,
+    ) -> SealProposeResult:
+        msg = self.ready_to_seal(user, pidge_id)
+        origin = self._resolve_public_origin(public_origin)
+        secret = f"pidge_sc_{secrets.token_urlsafe(32)}"
+        now = datetime.now(UTC)
+        challenge = self.store.create_seal_challenge(
+            token_hash_value=token_hash(secret),
+            pidge_id=pidge_id,
+            author_user_id=user.id,
+            created_by_token_id=agent_token_id,
+            expires_at=now + SEAL_CHALLENGE_TTL,
+        )
+        seal_url = f"{origin}/compose/{pidge_id}/seal-challenge/{secret}"
+        return SealProposeResult(
+            challenge=challenge,
+            secret=secret,
+            seal_url=seal_url,
+            message=msg,
+            recipients=self.store.recipients_for(pidge_id),
+        )
+
+    def load_seal_challenge(
+        self, user: User, pidge_id: int, secret: str
+    ) -> SealChallenge:
+        """Validate a challenge for human preview (does not consume)."""
+        challenge = self.store.get_seal_challenge_by_hash(token_hash(secret))
+        if challenge is None:
+            raise LookupError("Seal challenge not found.")
+        if challenge.pidge_id != pidge_id:
+            raise PermissionError("Seal challenge does not match this draft.")
+        if challenge.author_user_id != user.id:
+            raise PermissionError("Only the author can redeem this seal challenge.")
+        now = datetime.now(UTC)
+        if challenge.consumed_at is not None:
+            raise PermissionError("This seal challenge was already used.")
+        if challenge.expires_at <= now:
+            raise PermissionError("This seal challenge has expired.")
+        msg = self.store.get_pidge(pidge_id)
+        if msg.author_id != user.id:
+            raise PermissionError("Only the author can redeem this seal challenge.")
+        return challenge
+
+    def redeem_seal_challenge(self, user: User, pidge_id: int, secret: str) -> PidgeMessage:
+        challenge = self.load_seal_challenge(user, pidge_id, secret)
+        self.ready_to_seal(user, challenge.pidge_id)
+        consumed = self.store.consume_seal_challenge(token_hash(secret), datetime.now(UTC))
+        if consumed is None:
+            raise PermissionError("This seal challenge was already used or expired.")
+        return self.seal_pidge(user, challenge.pidge_id)
+
+    def _resolve_public_origin(self, override: str | None = None) -> str:
+        origin = (override or self.config.public_origin or "").strip().rstrip("/")
+        if origin:
+            return origin
+        if self.config.production:
+            raise RuntimeError(
+                "PIDGE_PUBLIC_ORIGIN is required to build seal challenge URLs."
+            )
+        return "http://127.0.0.1:8000"
 
     def discard_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
         msg = self.store.get_pidge(pidge_id)

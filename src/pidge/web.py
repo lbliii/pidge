@@ -254,6 +254,38 @@ def create_app(
         pin = service.pin_note(owner, pidge_id, title=title or None)
         return {"id": pin.id, "pidge_id": pin.pidge_id, "title": pin.title}
 
+    @app.tool(
+        "propose_seal",
+        description=(
+            "Propose sealing a ready draft. Returns a one-time seal_url for the "
+            "human author to confirm in the browser. Does not seal by itself."
+        ),
+    )
+    def propose_seal_tool(pidge_id: int) -> dict[str, Any]:
+        client, owner = require_agent("pidge:seal.propose")
+        result = service.propose_seal(
+            owner,
+            pidge_id,
+            agent_token_id=client.token_id,
+            public_origin=config.public_origin,
+        )
+        msg = result.message
+        return {
+            "pidge_id": msg.id,
+            "summary": msg.summary,
+            "slots": msg.slots,
+            "recipients": [
+                {
+                    "display_name": r.display_name,
+                    "loft_user_id": r.loft_user_id,
+                    "contact_id": r.contact_id,
+                }
+                for r in result.recipients
+            ],
+            "expires_at": result.challenge.expires_at.isoformat(),
+            "seal_url": result.seal_url,
+        }
+
     # --- HTTP routes -------------------------------------------------------
 
     @app.route("/")
@@ -363,21 +395,21 @@ def create_app(
     @app.route("/inbox")
     def inbox(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(request, "inbox.html", messages=service.store.list_inbox(user.id))
 
     @app.route("/sent")
     def sent(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(request, "sent.html", messages=service.store.list_sent(user.id))
 
     @app.route("/compose")
     def compose_index(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         drafts = service.store.list_drafts(user.id)
         if drafts:
@@ -387,7 +419,7 @@ def create_app(
     @app.route("/compose/{draft_id:int}")
     def compose_draft(request: Request, draft_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             msg = service.get_pidge_for(user, draft_id)
@@ -400,7 +432,7 @@ def create_app(
     @app.route("/compose/{draft_id:int}/seal", methods=["POST"], referenced=True)
     async def seal_draft(request: Request, draft_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             sealed = service.seal_pidge(user, draft_id)
@@ -416,7 +448,7 @@ def create_app(
     @app.route("/compose/{draft_id:int}/discard", methods=["POST"], referenced=True)
     async def discard_draft(request: Request, draft_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             service.discard_pidge(user, draft_id)
@@ -424,10 +456,66 @@ def create_app(
             return Response("Not found", status=404)
         return Redirect("/compose")
 
+    @app.route(
+        "/compose/{draft_id:int}/seal-challenge/{secret}",
+        referenced=True,
+        template="seal_challenge.html",
+    )
+    def seal_challenge_get(request: Request, draft_id: int, secret: str):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        try:
+            service.load_seal_challenge(user, draft_id, secret)
+            msg = service.get_pidge_for(user, draft_id)
+        except LookupError:
+            return Response("Seal challenge not found.", status=404)
+        except PermissionError as exc:
+            detail = str(exc)
+            status = (
+                410
+                if "expired" in detail.lower() or "already used" in detail.lower()
+                else 403
+            )
+            return Response(detail, status=status)
+        except ValueError as exc:
+            return Response(str(exc), status=403)
+        return render(
+            request,
+            "seal_challenge.html",
+            **_compose_context(service, msg),
+            challenge_token=secret,
+        )
+
+    @app.route(
+        "/compose/{draft_id:int}/seal-challenge/{secret}",
+        methods=["POST"],
+        referenced=True,
+    )
+    async def seal_challenge_post(request: Request, draft_id: int, secret: str):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        try:
+            sealed = service.redeem_seal_challenge(user, draft_id, secret)
+        except LookupError:
+            return Response("Seal challenge not found.", status=404)
+        except PermissionError as exc:
+            detail = str(exc)
+            status = (
+                410
+                if "expired" in detail.lower() or "already used" in detail.lower()
+                else 403
+            )
+            return Response(detail, status=status)
+        except ValueError as exc:
+            return Response(str(exc), status=403)
+        return Redirect(f"/p/{sealed.id}")
+
     @app.route("/compose/{draft_id:int}/flight", referenced=True)
     def compose_flight_feed(request: Request, draft_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             service.get_pidge_for(user, draft_id)
@@ -449,7 +537,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}")
     def pidge_detail(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             msg = service.get_pidge_for(user, pidge_id)
@@ -471,7 +559,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}/revoke", methods=["POST"], referenced=True)
     async def revoke_sealed(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             service.revoke_sealed_pidge(user, pidge_id)
@@ -482,7 +570,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}/supersede", methods=["POST"], referenced=True)
     async def supersede_sealed(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             draft = service.supersede_pidge(user, pidge_id)
@@ -493,7 +581,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}/act", methods=["POST"], referenced=True)
     async def pidge_act(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         kind = str(form.get("kind", ""))
@@ -516,7 +604,7 @@ def create_app(
     @app.route("/directory")
     def directory(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(
             request,
@@ -529,7 +617,7 @@ def create_app(
     @app.route("/directory/connect", methods=["POST"], referenced=True)
     async def directory_connect(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         try:
@@ -548,7 +636,7 @@ def create_app(
     @app.route("/directory/accept", methods=["POST"], referenced=True)
     async def directory_accept(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         with contextlib.suppress(PermissionError, LookupError, ValueError):
@@ -558,7 +646,7 @@ def create_app(
     @app.route("/contacts")
     def contacts_page(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(
             request,
@@ -570,7 +658,7 @@ def create_app(
     @app.route("/contacts/add", methods=["POST"], referenced=True)
     async def contacts_add(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         try:
@@ -587,21 +675,21 @@ def create_app(
     @app.route("/calendar")
     def calendar(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(request, "calendar.html", holds=service.store.list_holds(user.id))
 
     @app.route("/wall")
     def wall(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(request, "wall.html", pins=service.store.list_pins(user.id))
 
     @app.route("/wall/pin", methods=["POST"], referenced=True)
     async def wall_pin(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         with contextlib.suppress(PermissionError, LookupError, ValueError):
@@ -622,7 +710,7 @@ def create_app(
     @app.route("/settings/agents")
     def agents_settings(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         return render(
             request,
@@ -639,7 +727,7 @@ def create_app(
     @app.route("/settings/agents", methods=["POST"], referenced=True)
     async def agents_mint(request: Request):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         form = await request.form()
         action = str(form.get("action", "mint"))
@@ -742,7 +830,7 @@ def _tool_event_touches_draft(event: Any, draft_id: int) -> bool:
     return False
 
 
-def _gate(request: Request, require_human: Any) -> User | Response:
+def _gate(request: Request, require_human: Any) -> User | Redirect:
     try:
         return require_human(request)
     except PermissionError:
