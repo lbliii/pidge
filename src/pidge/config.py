@@ -8,7 +8,8 @@ from dataclasses import dataclass
 
 PRODUCTION_ENVS = frozenset({"production", "staging"})
 
-AGENT_SCOPES = frozenset(
+# Desk = today's four agent scopes (draft + enrich + calendar propose + notes pin).
+DESK_SCOPES = frozenset(
     {
         "pidge:draft",
         "pidge:enrich",
@@ -16,6 +17,28 @@ AGENT_SCOPES = frozenset(
         "pidge:notes.pin",
     }
 )
+
+TOKEN_PRESETS: dict[str, frozenset[str]] = {
+    "draft": frozenset({"pidge:draft"}),
+    "desk": DESK_SCOPES,
+}
+
+DEFAULT_TOKEN_PRESET = "desk"
+
+# Registerable scopes for agent tokens. Seal scopes are intentionally absent.
+ALL_AGENT_SCOPES = DESK_SCOPES
+
+# Backward-compatible alias; prefer DESK_SCOPES / ALL_AGENT_SCOPES at call sites.
+AGENT_SCOPES = DESK_SCOPES
+
+
+def infer_preset(scopes: frozenset[str] | set[str]) -> str | None:
+    """Return preset name for an exact match, else None (custom)."""
+    chosen = frozenset(scopes)
+    for name, preset_scopes in TOKEN_PRESETS.items():
+        if chosen == preset_scopes:
+            return name
+    return None
 
 
 @dataclass(frozen=True, slots=True)

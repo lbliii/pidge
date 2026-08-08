@@ -10,7 +10,12 @@ from typing import Any
 
 from chirp.security.passwords import hash_password, verify_login
 
-from pidge.config import AGENT_SCOPES, PidgeConfig
+from pidge.config import (
+    ALL_AGENT_SCOPES,
+    DEFAULT_TOKEN_PRESET,
+    TOKEN_PRESETS,
+    PidgeConfig,
+)
 from pidge.models import (
     Act,
     AgentClient,
@@ -124,10 +129,18 @@ class PidgeService:
         *,
         label: str,
         scopes: frozenset[str] | None = None,
+        preset: str | None = None,
         days: int | None = 90,
     ) -> AgentTokenResult:
-        chosen = scopes or AGENT_SCOPES
-        unknown = chosen - AGENT_SCOPES
+        if scopes is not None:
+            chosen = frozenset(scopes)
+        elif preset is not None:
+            if preset not in TOKEN_PRESETS:
+                raise ValueError(f"Unknown preset: {preset}")
+            chosen = TOKEN_PRESETS[preset]
+        else:
+            chosen = TOKEN_PRESETS[DEFAULT_TOKEN_PRESET]
+        unknown = chosen - ALL_AGENT_SCOPES
         if unknown:
             raise ValueError(f"Unknown scopes: {', '.join(sorted(unknown))}")
         secret = f"pidge_at_{secrets.token_urlsafe(32)}"
