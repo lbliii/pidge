@@ -21,7 +21,12 @@ from chirp.middleware.security_headers import SecurityHeadersConfig
 from chirp.middleware.stack import secure_stack
 from chirp.middleware.static import StaticFiles
 
-from pidge.config import AGENT_SCOPES, PidgeConfig
+from pidge.config import (
+    ALL_AGENT_SCOPES,
+    DEFAULT_TOKEN_PRESET,
+    infer_preset,
+    PidgeConfig,
+)
 from pidge.models import AgentClient, User
 from pidge.services import PidgeService
 from pidge.store import Store, store_from_url
@@ -69,7 +74,7 @@ def create_app(
         HealthCheck("database", check=database.probe, message="database unavailable")
     )
 
-    for scope in sorted(AGENT_SCOPES):
+    for scope in sorted(ALL_AGENT_SCOPES):
         app.register_scope(scope)
 
     app.add_middleware(
@@ -563,7 +568,13 @@ def create_app(
     def _mcp_url(request: Request) -> str:
         if config.public_origin:
             return f"{config.public_origin}/mcp"
-        return f"{request.url.scheme}://{request.url.netloc}/mcp"
+        url = request.url
+        if isinstance(url, str):
+            parsed = urlparse(url)
+            scheme = parsed.scheme or "http"
+            netloc = parsed.netloc or "127.0.0.1:8000"
+            return f"{scheme}://{netloc}/mcp"
+        return f"{url.scheme}://{url.netloc}/mcp"
 
     @app.route("/settings/agents")
     def agents_settings(request: Request):
@@ -574,7 +585,9 @@ def create_app(
             request,
             "agents.html",
             tokens=service.list_agent_tokens(user),
-            scopes=sorted(AGENT_SCOPES),
+            scopes=sorted(ALL_AGENT_SCOPES),
+            default_preset=DEFAULT_TOKEN_PRESET,
+            infer_preset=infer_preset,
             minted_secret=None,
             mcp_url=_mcp_url(request),
             error=None,
@@ -591,8 +604,13 @@ def create_app(
             with contextlib.suppress(LookupError):
                 service.revoke_agent_token(user, int(form.get("token_id", "0")))
             return Redirect("/settings/agents")
+        preset = str(form.get("preset", DEFAULT_TOKEN_PRESET)).strip() or DEFAULT_TOKEN_PRESET
         try:
-            result = service.mint_agent_token(user, label=str(form.get("label", "Agent")))
+            result = service.mint_agent_token(
+                user,
+                label=str(form.get("label", "Agent")),
+                preset=preset,
+            )
             error = None
             secret = result.secret
         except ValueError as exc:
@@ -602,7 +620,9 @@ def create_app(
             request,
             "agents.html",
             tokens=service.list_agent_tokens(user),
-            scopes=sorted(AGENT_SCOPES),
+            scopes=sorted(ALL_AGENT_SCOPES),
+            default_preset=DEFAULT_TOKEN_PRESET,
+            infer_preset=infer_preset,
             minted_secret=secret,
             mcp_url=_mcp_url(request),
             error=error,

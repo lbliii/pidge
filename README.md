@@ -36,13 +36,15 @@ uv run pidge serve --no-debug
 
 ## Agent path
 
-1. Log in → **Agents** → mint a token (scopes: `pidge:draft`, `pidge:enrich`, …)
+Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pin). Humans seal in the UI — agents cannot. Narrower **Draft** tokens (`pidge:draft` only) are available under **Agents**. Trust ladder / future Confirm & Autopilot: [saga #26](https://github.com/lbliii/pidge/issues/26).
+
+1. Log in → **Agents** → mint a token (Desk by default)
 2. Copy the Cursor snippet from that page into `~/.cursor/mcp.json` (URL + `Authorization: Bearer …`)
-3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (agents cannot seal)
+3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI
 
 ### MCP curl recipe
 
-Mint a bearer token under **Agents** settings, then (agents cannot seal — humans seal in the UI):
+Mint a bearer token under **Agents** settings (Desk by default), then (agents cannot seal — humans seal in the UI):
 
 ```bash
 BASE=http://127.0.0.1:8000   # or https://web-production-04a7d.up.railway.app

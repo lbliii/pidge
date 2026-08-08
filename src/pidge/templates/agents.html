@@ -49,13 +49,34 @@
   {{ csrf_field() }}
   <input type="hidden" name="action" value="mint">
   <label>Label <input name="label" value="Secretary" required></label>
-  <p class="hint">Scopes: {% for s in scopes %}<code>{{ s }}</code> {% end %}</p>
+  <fieldset style="border:0;padding:0;margin:0.75rem 0">
+    <legend class="hint" style="padding:0;margin-bottom:0.4rem">Preset</legend>
+    <label style="display:block;margin-bottom:0.5rem">
+      <input type="radio" name="preset" value="desk" {% if default_preset == "desk" %}checked{% end %}>
+      <strong>Desk</strong> — draft, enrich, propose holds, pin notes (default)
+    </label>
+    <label style="display:block;margin-bottom:0.5rem">
+      <input type="radio" name="preset" value="draft" {% if default_preset == "draft" %}checked{% end %}>
+      <strong>Draft</strong> — <code>pidge:draft</code> only
+    </label>
+    <label style="display:block;margin-bottom:0.5rem;opacity:0.55;cursor:not-allowed">
+      <input type="radio" disabled>
+      <strong>Confirm</strong> — coming soon
+    </label>
+    <label style="display:block;opacity:0.55;cursor:not-allowed">
+      <input type="radio" disabled>
+      <strong>Autopilot</strong> — coming soon
+    </label>
+  </fieldset>
+  <p class="hint">Desk scopes: {% for s in scopes %}<code>{{ s }}</code> {% end %}</p>
   <button class="btn btn-seal" type="submit">Mint token</button>
 </form>
 <ul>
   {% for t in tokens %}
   <li>
     {{ t.label }} · {% if t.revoked_at %}revoked{% else %}active{% end %}
+    · {% set badge = infer_preset(t.scopes) %}
+    <span class="hint">{% if badge %}{{ badge.capitalize() }}{% else %}custom{% end %}</span>
     · {% for s in t.scopes %}<code>{{ s }}</code> {% end %}
     {% if not t.revoked_at %}
     <form method="post" action="/settings/agents" style="display:inline">
