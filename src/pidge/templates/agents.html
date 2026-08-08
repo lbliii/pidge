@@ -9,10 +9,42 @@
 </div>
 <p class="lede">Scoped bearer tokens for MCP. Agents never share your browser session.</p>
 {% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
-{% if minted_secret %}
-<p class="hint">Copy now — shown once:</p>
-<pre><code>{{ minted_secret }}</code></pre>
-{% end %}
+
+<section class="compose-panel" style="margin-bottom:1.5rem">
+  <h2 style="margin-top:0;font-size:1.1rem">Connect an agent</h2>
+  <ol class="hint" style="padding-left:1.2rem">
+    <li>Mint a token below (shown once).</li>
+    <li>In Cursor: Settings → MCP → add a remote server, or paste into <code>~/.cursor/mcp.json</code>.</li>
+    <li>Endpoint: <code>{{ mcp_url }}</code></li>
+  </ol>
+  {% if minted_secret %}
+  <p class="hint">Copy this into your MCP config — includes the secret, shown once:</p>
+  <pre><code>{
+  "mcpServers": {
+    "pidge": {
+      "url": "{{ mcp_url }}",
+      "headers": {
+        "Authorization": "Bearer {{ minted_secret }}"
+      }
+    }
+  }
+}</code></pre>
+  <p class="hint">Token alone: <code>{{ minted_secret }}</code></p>
+  {% else %}
+  <p class="hint">After minting, you’ll get a ready-to-paste Cursor snippet with the bearer header filled in.</p>
+  <pre><code>{
+  "mcpServers": {
+    "pidge": {
+      "url": "{{ mcp_url }}",
+      "headers": {
+        "Authorization": "Bearer pidge_at_…"
+      }
+    }
+  }
+}</code></pre>
+  {% end %}
+</section>
+
 <form method="post" action="/settings/agents" class="compose-panel">
   {{ csrf_field() }}
   <input type="hidden" name="action" value="mint">

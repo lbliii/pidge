@@ -581,6 +581,11 @@ def create_app(
             service.pin_note(user, int(form.get("pidge_id", "0")))
         return Redirect("/wall")
 
+    def _mcp_url(request: Request) -> str:
+        if config.public_origin:
+            return f"{config.public_origin}/mcp"
+        return f"{request.url.scheme}://{request.url.netloc}/mcp"
+
     @app.route("/settings/agents")
     def agents_settings(request: Request):
         user = _gate(request, require_human)
@@ -592,6 +597,7 @@ def create_app(
             tokens=service.list_agent_tokens(user),
             scopes=sorted(AGENT_SCOPES),
             minted_secret=None,
+            mcp_url=_mcp_url(request),
             error=None,
         )
 
@@ -619,6 +625,7 @@ def create_app(
             tokens=service.list_agent_tokens(user),
             scopes=sorted(AGENT_SCOPES),
             minted_secret=secret,
+            mcp_url=_mcp_url(request),
             error=error,
         )
 
