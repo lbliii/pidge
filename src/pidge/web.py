@@ -559,7 +559,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}/revoke", methods=["POST"], referenced=True)
     async def revoke_sealed(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             service.revoke_sealed_pidge(user, pidge_id)
@@ -570,7 +570,7 @@ def create_app(
     @app.route("/p/{pidge_id:int}/supersede", methods=["POST"], referenced=True)
     async def supersede_sealed(request: Request, pidge_id: int):
         user = _gate(request, require_human)
-        if isinstance(user, Response):
+        if not isinstance(user, User):
             return user
         try:
             draft = service.supersede_pidge(user, pidge_id)
