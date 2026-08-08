@@ -3,16 +3,32 @@
 {% block page_content %}
 <div class="page-head">
   <div>
-    <p class="kicker">Mail</p>
+    <p class="kicker">Your graph</p>
     <h1>Inbox</h1>
   </div>
+  <a class="btn btn-seal" href="/compose">New Pidge</a>
 </div>
+
 {% if messages %}
-<ul class="message-list">
+<div class="inbox">
   {% for m in messages %}
-  <li><a href="/p/{{ m.id }}"><strong>{{ m.summary }}</strong></a> from {{ m.author_name }}</li>
+  <a class="msg" href="/p/{{ m.id }}">
+    <div class="msg-avatar{% if m.state == 'sealed' %} seal{% end %}">{{ (m.author_name or "?")[:1] }}</div>
+    <div>
+      <strong>{{ m.summary }}</strong>
+      <div class="preview">From {{ m.author_name }} · {% if m.intent %}{{ m.intent }}{% else %}invite sealed{% end %}</div>
+      {% if m.state == "sealed" %}
+      <span class="badge invite">Invite · sealed</span>
+      {% else %}
+      <span class="badge">{{ m.state }}</span>
+      {% end %}
+    </div>
+    <time{% if m.sealed_at %} datetime="{{ m.sealed_at.isoformat() }}"{% end %}>
+      {% if m.sealed_at %}{{ m.sealed_at.strftime("%-I:%M %p") }}{% elif m.updated_at %}{{ m.updated_at.strftime("%-I:%M %p") }}{% else %}—{% end %}
+    </time>
+  </a>
   {% end %}
-</ul>
+</div>
 {% else %}
 <p class="hint">No sealed Pidges addressed to you.</p>
 {% end %}
