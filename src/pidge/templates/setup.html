@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block title %}Set up — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Bootstrap</p>
+    <h1>Claim this loft</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<form method="post" action="/setup" class="compose-panel">
+  {{ csrf_field() }}
+  <label>Bootstrap token
+    <input name="bootstrap_token" required {% if show_development_hint %}placeholder="development-bootstrap-token"{% end %}>
+  </label>
+  {% if show_development_hint %}
+  <p class="hint">Dev default: <code>development-bootstrap-token</code></p>
+  {% end %}
+  <label>Loft name
+    <input name="loft_name" value="{{ values.loft_name }}" required>
+  </label>
+  <label>Username
+    <input name="username" value="{{ values.username }}" required>
+  </label>
+  <label>Display name
+    <input name="display_name" value="{{ values.display_name }}">
+  </label>
+  <label>Password
+    <input name="password" type="password" required minlength="10">
+  </label>
+  <button class="btn btn-seal" type="submit">Open the loft</button>
+</form>
+{% end %}

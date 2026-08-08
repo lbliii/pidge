@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block title %}Directory — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Same loft</p>
+    <h1>Who’s here</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<p class="lede">Anyone in this loft can be addressed without a prior friend edge.</p>
+<ul>
+  {% for person in people %}
+  <li>
+    <strong>{{ person.display_name }}</strong> · @{{ person.username }}
+    <form method="post" action="/directory/connect" style="display:inline">
+      {{ csrf_field() }}
+      <input type="hidden" name="username" value="{{ person.username }}">
+      <button class="btn btn-ghost" type="submit">Request connection</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="hint">You’re the only one here. Invite someone to register.</li>
+  {% end %}
+</ul>
+<section>
+  <h2>Connection requests</h2>
+  <ul>
+    {% for req in requests %}
+    <li>
+      #{{ req.id }} · from {{ req.from_user_id }} → {{ req.to_user_id or req.external_handle }} · {{ req.status }}
+      {% if req.to_user_id == viewer.id and req.status == "pending" %}
+      <form method="post" action="/directory/accept" style="display:inline">
+        {{ csrf_field() }}
+        <input type="hidden" name="request_id" value="{{ req.id }}">
+        <button class="btn btn-seal" type="submit">Accept</button>
+      </form>
+      {% end %}
+    </li>
+    {% else %}
+    <li class="hint">None.</li>
+    {% end %}
+  </ul>
+</section>
+{% end %}

@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}Inbox — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Mail</p>
+    <h1>Inbox</h1>
+  </div>
+</div>
+{% if messages %}
+<ul class="message-list">
+  {% for m in messages %}
+  <li><a href="/p/{{ m.id }}"><strong>{{ m.summary }}</strong></a> from {{ m.author_name }}</li>
+  {% end %}
+</ul>
+{% else %}
+<p class="hint">No sealed Pidges addressed to you.</p>
+{% end %}
+{% end %}

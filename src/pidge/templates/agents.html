@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}Agents — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Machine credentials</p>
+    <h1>Agent keys</h1>
+  </div>
+</div>
+<p class="lede">Scoped bearer tokens for MCP. Agents never share your browser session.</p>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if minted_secret %}
+<p class="hint">Copy now — shown once:</p>
+<pre><code>{{ minted_secret }}</code></pre>
+{% end %}
+<form method="post" action="/settings/agents" class="compose-panel">
+  {{ csrf_field() }}
+  <input type="hidden" name="action" value="mint">
+  <label>Label <input name="label" value="Secretary" required></label>
+  <p class="hint">Scopes: {% for s in scopes %}<code>{{ s }}</code> {% end %}</p>
+  <button class="btn btn-seal" type="submit">Mint token</button>
+</form>
+<ul>
+  {% for t in tokens %}
+  <li>
+    {{ t.label }} · {% if t.revoked_at %}revoked{% else %}active{% end %}
+    · {% for s in t.scopes %}<code>{{ s }}</code> {% end %}
+    {% if not t.revoked_at %}
+    <form method="post" action="/settings/agents" style="display:inline">
+      {{ csrf_field() }}
+      <input type="hidden" name="action" value="revoke">
+      <input type="hidden" name="token_id" value="{{ t.id }}">
+      <button class="btn btn-ghost" type="submit">Revoke</button>
+    </form>
+    {% end %}
+  </li>
+  {% else %}
+  <li class="hint">No tokens yet.</li>
+  {% end %}
+</ul>
+{% end %}

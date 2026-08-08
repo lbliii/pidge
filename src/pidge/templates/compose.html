@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}Draft {{ message.id }} — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Dictate → fly → seal</p>
+    <h1>Draft #{{ message.id }}</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<div class="thread-layout">
+  <div class="compose-panel">
+    <p class="hint">Intent</p>
+    <p><strong>{{ message.intent }}</strong></p>
+    <p class="hint">Summary</p>
+    <p>{{ message.summary }}</p>
+    <p class="hint">Recipients</p>
+    <ul>{% for r in recipients %}<li>{{ r.display_name }}</li>{% end %}</ul>
+    <p class="hint">Slots</p>
+    <ul>
+      {% for key, slot in message.slots.items() %}
+      <li><code>{{ key }}</code> · {{ slot.status }}{% if slot.value %} · {{ slot.value }}{% end %}</li>
+      {% end %}
+    </ul>
+    {% if can_seal and message.state == "draft" %}
+    <form method="post" action="/compose/{{ message.id }}/seal">
+      {{ csrf_field() }}
+      <button class="btn btn-seal" type="submit">Seal</button>
+    </form>
+    {% elif message.state == "draft" %}
+    <p class="hint">Fill who / when / where (or mark none) via <code>enrich_pidge</code> before sealing.</p>
+    {% else %}
+    <p class="hint">Sealed. <a href="/p/{{ message.id }}">Open thread</a></p>
+    {% end %}
+  </div>
+  {% block flight_rail %}
+  <aside class="flight-track" id="flight-rail">
+    <h2>Flight</h2>
+    {% if flight %}
+      <p class="hint">State: {{ flight.state }}</p>
+      <ol>
+        {% for step in steps %}
+        <li class="ride-step is-{{ step.state }}">
+          <strong>{{ step.label }}</strong>
+          <span>{{ step.detail }}</span>
+        </li>
+        {% end %}
+      </ol>
+      {% if message.state == "draft" %}
+      <p class="hint">
+        Live updates:
+        <a href="/compose/{{ message.id }}">refresh</a>
+        · SSE at <code>/compose/{{ message.id }}/flight</code>
+      </p>
+      {% end %}
+    {% else %}
+      <p class="hint">No flight yet.</p>
+    {% end %}
+  </aside>
+  {% end %}
+</div>
+{% end %}

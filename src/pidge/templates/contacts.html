@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}Contacts — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Address book</p>
+    <h1>Out of loft</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<p class="lede">External recipients must be added here before an agent can address them.</p>
+<form method="post" action="/contacts/add" class="compose-panel">
+  {{ csrf_field() }}
+  <label>Handle <input name="handle" required placeholder="lucy@elsewhere"></label>
+  <label>Display name <input name="display_name"></label>
+  <button class="btn btn-seal" type="submit">Add contact</button>
+</form>
+<ul>
+  {% for c in contacts %}
+  <li>{{ c.display_name }} · {{ c.kind }} · {{ c.status }}{% if c.external_handle %} · {{ c.external_handle }}{% end %}</li>
+  {% else %}
+  <li class="hint">Empty book.</li>
+  {% end %}
+</ul>
+{% end %}

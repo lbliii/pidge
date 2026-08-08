@@ -3,57 +3,68 @@
 **Your agent’s secretary — structured mail, calendar, and a wall of notes.**
 
 You don’t type into Pidge. Your agent writes via MCP. You review, seal, and act.
-Mail that means something: hypermedia objects, not SMTP cosplay.
-
-## Thesis
-
-Pidge is the desk, not the typewriter.
-
-| Surface | Job |
-|---|---|
-| **Mail** | Directed, sealed, actionable messages (invite, RSVP, enrichments) |
-| **Calendar** | Holds and commitments the secretary keeps for you |
-| **Wall of notes** | Your loft / corkboard — pinned sealed objects, not a social feed |
-
-Built to sit beside [Orrery](https://github.com/lbliii/orrery) (skills you point at) and on [Chirp](https://github.com/lbliii/chirp) (HTML-first hypermedia).
-
-## Creative constraints
-
-Like Twitter’s character limit — scarcity that makes the product legible:
-
-1. **No UI authoring** — humans don’t free-type compose. Agents draft over MCP.
-2. **Seal freezes** — after seal, content is immutable; revoke or supersede instead of quiet edits.
-3. **Acts, not replies** — recipients hit typed actions (RSVP, propose time, decline); prose is optional garnish from *their* agent.
-4. **Structured or it doesn’t fly** — who / when / where (or explicit none) before seal.
-5. **Two identities** — your browser session ≠ your agent’s credential (scoped token).
-
-Full product plan: [`PLAN.md`](./PLAN.md).
 
 ## Status
 
-Early product repo. Design direction is in [`design/`](./design/) (HTML/CSS mocks). Implementation is next.
+Runnable Chirp app (no ChirpUI). Design mocks remain in [`design/`](./design/). Product plan: [`PLAN.md`](./PLAN.md).
 
-**Palette:** oat / leather / bay / stable — Barlow Semi Condensed + Source Sans 3.
+## Stack
 
-## Preview the mocks
+- Chirp hypermedia + HTMX
+- Postgres (Railway) / MemoryStore for tests
+- Custom oat/leather CSS from design mocks
+- Durable human sessions + scoped agent bearer tokens
+
+## Local development
 
 ```bash
-cd design
-python -m http.server 8766
-# open http://localhost:8766
+uv sync --group dev
+uv run pidge serve
+# open http://127.0.0.1:8000/setup
+# bootstrap token (dev): development-bootstrap-token
 ```
 
-## Screens
+Optional Postgres:
 
-| File | Screen |
+```bash
+export DATABASE_URL=postgresql://...
+export PIDGE_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(48))')
+export PIDGE_BOOTSTRAP_TOKEN=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')
+uv run pidge migrate
+uv run pidge serve --no-debug
+```
+
+## Agent path
+
+1. Log in → **Agents** → mint a token (scopes: `pidge:draft`, `pidge:enrich`, …)
+2. Point an MCP client at `/mcp` with `Authorization: Bearer …`
+3. `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (agents cannot seal)
+
+## Addressing
+
+- **Same loft:** directory of members; message anyone on this deployment
+- **Out of loft:** must add them to **Contacts** first
+
+## Railway
+
+One app service + Postgres:
+
+| Variable | Notes |
 |---|---|
-| [design/index.html](./design/index.html) | Landing |
-| [design/compose.html](./design/compose.html) | Agent flight → enrich → seal |
-| [design/inbox.html](./design/inbox.html) | Inbox |
-| [design/sent.html](./design/sent.html) | Delivery confirmation |
-| [design/lucy.html](./design/lucy.html) | Recipient verify + RSVP |
-| [design/thread.html](./design/thread.html) | Settled thread |
-| [design/fonts.html](./design/fonts.html) | Type pairing explorer |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `PIDGE_ENV` | `production` |
+| `PIDGE_SECRET_KEY` | `${{secret(64)}}` |
+| `PIDGE_BOOTSTRAP_TOKEN` | `${{secret(32)}}` |
+| `RAILPACK_PYTHON_VERSION` | `3.14` |
+
+Healthcheck: `/ready`. Start: `pidge serve --host 0.0.0.0 --port $PORT --no-debug`.
+
+## Tests
+
+```bash
+uv run pytest
+uv run pidge check
+```
 
 ## License
 

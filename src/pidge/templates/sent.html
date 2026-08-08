@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}Sent — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Mail</p>
+    <h1>Sent</h1>
+  </div>
+</div>
+{% if messages %}
+<ul class="message-list">
+  {% for m in messages %}
+  <li><a href="/p/{{ m.id }}"><strong>{{ m.summary }}</strong></a></li>
+  {% end %}
+</ul>
+{% else %}
+<p class="hint">Nothing sealed yet.</p>
+{% end %}
+{% end %}

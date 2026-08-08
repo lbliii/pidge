@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}Calendar — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Commitments</p>
+    <h1>Calendar</h1>
+  </div>
+</div>
+{% if holds %}
+<ul>
+  {% for h in holds %}
+  <li>
+    <strong>{{ h.title }}</strong>
+    · {{ h.state }}
+    {% if h.starts_at %} · {{ h.starts_at }}{% end %}
+    {% if h.place %} · {{ h.place }}{% end %}
+    · <a href="/p/{{ h.pidge_id }}">Pidge</a>
+  </li>
+  {% end %}
+</ul>
+{% else %}
+<p class="hint">No holds. Seal an invite with a when-slot, or propose via MCP.</p>
+{% end %}
+{% end %}

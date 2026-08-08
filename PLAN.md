@@ -93,11 +93,14 @@ Read path may be MCP *and* HTML; humans primarily use the hypermedia client.
 
 - [x] Design mocks (landing, compose flight, inbox, sent, recipient RSVP, thread)
 - [x] Product plan (this doc) + standalone repo
-- [ ] Kill free-type compose in mocks; show agent-inbound draft + flight + seal
-- [ ] Chirp app scaffold (pages, session + CSRF stack, scope registry)
-- [ ] MCP tool stubs + delegated token mint/revoke
-- [ ] Calendar projection from sealed invites
-- [ ] Notes wall (personal loft) v0
+- [x] Chirp app scaffold (Postgres, session + CSRF stack, scope registry, no ChirpUI)
+- [x] Loft directory + address book (same-loft vs out-of-loft)
+- [x] Draft / flight / human seal / inbox / acts
+- [x] MCP tool stubs + delegated token mint/revoke
+- [x] Calendar holds + notes wall
+- [x] Railway config + `/ready` + contract tests
+- [ ] Kill free-type compose in design mocks (app UI already agent-inbound)
+- [ ] Cross-loft federation (address book is the seam)
 
 ## Open questions
 

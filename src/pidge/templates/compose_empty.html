@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}Compose — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Agent inbound</p>
+    <h1>Waiting on your agent</h1>
+  </div>
+</div>
+<p class="lede">
+  There is no compose box. Mint an agent token under
+  <a href="/settings/agents">Agents</a>, then call <code>draft_pidge</code> on <code>/mcp</code>.
+</p>
+{% end %}

@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}{{ message.summary }} — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">{{ message.state }}</p>
+    <h1>{{ message.summary }}</h1>
+  </div>
+</div>
+{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+<p class="lede">From {{ message.author_name }} · intent: {{ message.intent }}</p>
+<ul>
+  {% for r in recipients %}<li>To {{ r.display_name }}</li>{% end %}
+</ul>
+<ul>
+  {% for key, slot in message.slots.items() %}
+  <li><code>{{ key }}</code>: {% if slot.value %}{{ slot.value }}{% else %}{{ slot.status }}{% end %}</li>
+  {% end %}
+</ul>
+{% if message.content_hash %}
+<p class="hint">Seal hash <code>{{ message.content_hash[:16] }}…</code></p>
+{% end %}
+
+{% if is_recipient and message.state == "sealed" %}
+<form method="post" action="/p/{{ message.id }}/act" class="hero-actions">
+  {{ csrf_field() }}
+  <button class="btn btn-seal" name="kind" value="rsvp_yes" type="submit">RSVP yes</button>
+  <button class="btn btn-ghost" name="kind" value="rsvp_no" type="submit">RSVP no</button>
+  <button class="btn btn-ghost" name="kind" value="decline" type="submit">Decline</button>
+</form>
+{% end %}
+
+<form method="post" action="/wall/pin">
+  {{ csrf_field() }}
+  <input type="hidden" name="pidge_id" value="{{ message.id }}">
+  <button class="btn btn-ghost" type="submit">Pin to wall</button>
+</form>
+
+<section>
+  <h2>Acts</h2>
+  {% if acts %}
+  <ul>{% for a in acts %}<li>{{ a.actor_name }} · {{ a.kind }}</li>{% end %}</ul>
+  {% else %}
+  <p class="hint">No acts yet.</p>
+  {% end %}
+</section>
+{% end %}
