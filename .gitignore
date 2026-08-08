@@ -27,3 +27,9 @@ build/
 # Local
 .railway/
 .chirp/
+
+# Plan scratch (pattern in .plan/README.md) — keep README only
+.plan/**
+!.plan/README.md
+PLAN.md
+*.plan.md

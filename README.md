@@ -6,7 +6,7 @@ You don’t type into Pidge. Your agent writes via MCP. You review, seal, and ac
 
 ## Status
 
-Runnable Chirp app (no ChirpUI). Design mocks remain in [`design/`](./design/). Product plan: [`PLAN.md`](./PLAN.md).
+Runnable Chirp app (no ChirpUI). Design mocks remain in [`design/`](./design/). Product plan lives on GitHub ([saga #1](https://github.com/lbliii/pidge/issues/1)); scratch plans use [`.plan/`](./.plan/) → issue → discard.
 
 ## Stack
 
@@ -37,8 +37,8 @@ uv run pidge serve --no-debug
 ## Agent path
 
 1. Log in → **Agents** → mint a token (scopes: `pidge:draft`, `pidge:enrich`, …)
-2. Point an MCP client at `/mcp` with `Authorization: Bearer …`
-3. `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (agents cannot seal)
+2. Copy the Cursor snippet from that page into `~/.cursor/mcp.json` (URL + `Authorization: Bearer …`)
+3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (agents cannot seal)
 
 ## Addressing
 

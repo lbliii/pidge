@@ -41,7 +41,7 @@ One Railway deployment = one **loft**. Same-loft members are addressable from th
 
 ## Provenance
 
-- Product plan: [`PLAN.md`](./blob/main/PLAN.md)
+- Planning pattern: [`.plan/README.md`](./blob/main/.plan/README.md) (scratch → GitHub issues → discard)
 - Design mocks: [`design/`](./tree/main/design)
 - Scaffold landed: Chirp app in `src/pidge/` (Postgres/MemoryStore, MCP tools, human seal, directory/contacts, calendar, wall)
 - Related: [lbliii/chirp#959](https://github.com/lbliii/chirp/issues/959) Orrery · Chirp auth scopes / `@app.tool`

@@ -18,4 +18,4 @@ python -m http.server 8766
 
 **Vibe:** oat / leather / bay · Barlow Semi Condensed + Source Sans 3.
 
-**Note:** Compose still shows a dictate textarea for the story beat. Product constraint is **no UI authoring** — next mock pass should make this agent-inbound only (see repo [`PLAN.md`](../PLAN.md)).
+**Note:** Compose still shows a dictate textarea for the story beat. Product constraint is **no UI authoring** — next mock pass should make this agent-inbound only (see [saga #1](https://github.com/lbliii/pidge/issues/1)).
