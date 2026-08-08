@@ -36,15 +36,17 @@ uv run pidge serve --no-debug
 
 ## Agent path
 
-Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pin). Humans seal in the UI — agents cannot. Narrower **Draft** tokens (`pidge:draft` only) are available under **Agents**. Trust ladder / future Confirm & Autopilot: [saga #26](https://github.com/lbliii/pidge/issues/26).
+Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pin; 90-day TTL). Narrower **Draft**, **Confirm** (`propose_seal` + human one-shot challenge), and opt-in **Autopilot** (`pidge:seal`; 30-day TTL) live under **Agents**. MCP seal is scope-gated: only Autopilot tokens with `pidge:seal` may call `seal_pidge`. Trust ladder: [saga #26](https://github.com/lbliii/pidge/issues/26) / [epic #29](https://github.com/lbliii/pidge/issues/29).
 
-1. Log in → **Agents** → mint a token (Desk by default)
+**Warning:** Never paste Autopilot tokens into shared chats. They can seal Pidges over MCP without a browser challenge.
+
+1. Log in → **Agents** → mint a token (Desk by default; Autopilot requires an acknowledge checkbox)
 2. Copy the Cursor snippet from that page into `~/.cursor/mcp.json` (URL + `Authorization: Bearer …`)
-3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI. Discard unwanted drafts with `discard_pidge` (scope `pidge:draft`) or the Discard button on compose/desk — discarded drafts become `revoked` and leave draft lists. Sealed Pidges are immutable: authors revoke or supersede from the thread UI only (agents cannot); revoke hides from inbox/sent without rewriting `content_hash`, and supersede opens a new draft linked via `supersedes_id`.
+3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (or Autopilot `seal_pidge` when intentionally opted in). Discard unwanted drafts with `discard_pidge` (scope `pidge:draft`) or the Discard button on compose/desk — discarded drafts become `revoked` and leave draft lists. Sealed Pidges are immutable: authors revoke or supersede from the thread UI only (agents cannot); revoke hides from inbox/sent without rewriting `content_hash`, and supersede opens a new draft linked via `supersedes_id`.
 
 ### MCP curl recipe
 
-Mint a bearer token under **Agents** settings (Desk by default), then (agents cannot seal — humans seal in the UI):
+Mint a bearer token under **Agents** settings (Desk by default). Desk/Confirm cannot seal; Autopilot with `pidge:seal` can:
 
 ```bash
 BASE=http://127.0.0.1:8000   # or https://web-production-04a7d.up.railway.app

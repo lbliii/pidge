@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from chirp.testing import TestClient
 
 from pidge.config import (
+    AUTOPILOT_SCOPES,
+    AUTOPILOT_TOKEN_TTL_DAYS,
     DESK_SCOPES,
+    DESK_TOKEN_TTL_DAYS,
     TOKEN_PRESETS,
     infer_preset,
     PidgeConfig,
@@ -76,6 +80,7 @@ def test_infer_preset_matches_draft_and_desk() -> None:
     assert infer_preset(TOKEN_PRESETS["draft"]) == "draft"
     assert infer_preset(DESK_SCOPES) == "desk"
     assert infer_preset(TOKEN_PRESETS["confirm"]) == "confirm"
+    assert infer_preset(TOKEN_PRESETS["autopilot"]) == "autopilot"
     assert infer_preset(frozenset({"pidge:draft", "pidge:enrich"})) is None
 
 
@@ -102,10 +107,36 @@ def test_preset_confirm_mints_confirm_scopes(service: PidgeService) -> None:
     assert "pidge:seal" not in minted.token.scopes
 
 
+def test_preset_autopilot_mints_seal_scope(service: PidgeService) -> None:
+    owner = _setup_owner(service)
+    minted = service.mint_agent_token(owner, label="Auto", preset="autopilot")
+    assert minted.token.scopes == AUTOPILOT_SCOPES
+    assert infer_preset(minted.token.scopes) == "autopilot"
+    assert "pidge:seal" in minted.token.scopes
+    assert "pidge:seal.propose" in minted.token.scopes
+
+
 def test_unknown_preset_raises(service: PidgeService) -> None:
     owner = _setup_owner(service)
     with pytest.raises(ValueError, match="Unknown preset"):
-        service.mint_agent_token(owner, label="Nope", preset="autopilot")
+        service.mint_agent_token(owner, label="Nope", preset="bogus")
+
+
+def test_autopilot_ttl_shorter_than_desk(service: PidgeService) -> None:
+    owner = _setup_owner(service)
+    before = datetime.now(UTC)
+    auto = service.mint_agent_token(
+        owner, label="Auto", preset="autopilot", days=AUTOPILOT_TOKEN_TTL_DAYS
+    )
+    desk = service.mint_agent_token(
+        owner, label="Desk", preset="desk", days=DESK_TOKEN_TTL_DAYS
+    )
+    assert auto.token.expires_at is not None
+    assert desk.token.expires_at is not None
+    auto_delta = auto.token.expires_at - before
+    desk_delta = desk.token.expires_at - before
+    assert timedelta(days=29) < auto_delta < timedelta(days=31)
+    assert timedelta(days=89) < desk_delta < timedelta(days=91)
 
 
 def test_explicit_scopes_override_preset(service: PidgeService) -> None:
@@ -148,7 +179,9 @@ async def test_agents_mint_form_posts_preset(app, service: PidgeService) -> None
         assert 'name="preset" value="desk"' in agents.text
         assert 'name="preset" value="draft"' in agents.text
         assert 'name="preset" value="confirm"' in agents.text
-        assert "coming soon" in agents.text.lower()
+        assert 'name="preset" value="autopilot"' in agents.text
+        assert "acknowledge_autopilot" in agents.text
+        assert "coming soon" not in agents.text.lower()
 
         minted = await client.post(
             "/settings/agents",
@@ -165,9 +198,43 @@ async def test_agents_mint_form_posts_preset(app, service: PidgeService) -> None
         assert any(t.scopes == frozenset({"pidge:draft"}) for t in tokens)
         assert "Draft" in minted.text
 
+        denied_auto = await client.post(
+            "/settings/agents",
+            data={
+                "_csrf_token": _csrf(minted),
+                "action": "mint",
+                "label": "Danger Bot",
+                "preset": "autopilot",
+            },
+            headers={"Cookie": session},
+        )
+        assert denied_auto.status == 200
+        assert "acknowledge" in denied_auto.text.lower()
+        assert not any(
+            infer_preset(t.scopes) == "autopilot" for t in service.list_agent_tokens(owner)
+        )
+
+        auto = await client.post(
+            "/settings/agents",
+            data={
+                "_csrf_token": _csrf(denied_auto),
+                "action": "mint",
+                "label": "Danger Bot",
+                "preset": "autopilot",
+                "acknowledge_autopilot": "1",
+            },
+            headers={"Cookie": session},
+        )
+        assert auto.status == 200
+        assert any(
+            infer_preset(t.scopes) == "autopilot" for t in service.list_agent_tokens(owner)
+        )
+        assert "never paste" in auto.text.lower()
+        assert "badge autopilot" in auto.text or 'class="badge autopilot"' in auto.text
+
 
 @pytest.mark.asyncio
-async def test_seal_tool_absent_from_tools_list(app, service: PidgeService) -> None:
+async def test_seal_tool_listed_for_schema(app, service: PidgeService) -> None:
     owner = _setup_owner(service)
     minted = service.mint_agent_token(owner, label="Secretary")
 
@@ -180,6 +247,5 @@ async def test_seal_tool_absent_from_tools_list(app, service: PidgeService) -> N
         assert listed.status == 200
         payload = json.loads(listed.text)
         names = {t["name"] for t in payload["result"]["tools"]}
-        assert "seal_pidge" not in names
+        assert "seal_pidge" in names
         assert "propose_seal" in names
-        assert not any(n == "seal" or n.startswith("seal_") for n in names)

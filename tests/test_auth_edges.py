@@ -1,4 +1,4 @@
-"""Auth hard edges: revoked tokens, missing scopes, seal stays session-only."""
+"""Auth hard edges: revoked tokens, missing scopes, scope-gated MCP seal."""
 
 from __future__ import annotations
 
@@ -218,13 +218,8 @@ async def test_missing_scope_denied_on_scoped_tools(
         assert "pidge:notes.pin" in detail or "Missing scopes" in detail
 
 
-async def test_seal_not_mcp_and_ui_requires_session(
-    app, service: PidgeService
-) -> None:
-    """#15: no seal MCP tool; unauth seal fails; author session seals when ready."""
-    owner, _lucy = _setup_loft(service)
-    minted = service.mint_agent_token(owner, label="Secretary")
-    draft = service.enrich_pidge(
+def _ready_draft(service: PidgeService, owner):
+    return service.enrich_pidge(
         owner,
         service.draft_pidge(
             owner,
@@ -236,27 +231,104 @@ async def test_seal_not_mcp_and_ui_requires_session(
         where="Nowadays, Brooklyn",
         extras={"menu": "kitchen + wine"},
     )
-    assert draft.state == "draft"
+
+
+async def test_desk_and_confirm_cannot_seal_via_mcp(
+    app, service: PidgeService
+) -> None:
+    """Desk/Confirm lack pidge:seal — seal_pidge is denied at runtime."""
+    owner, _lucy = _setup_loft(service)
+    draft = _ready_draft(service, owner)
+    desk = service.mint_agent_token(owner, label="Desk", preset="desk")
+    confirm = service.mint_agent_token(owner, label="Confirm", preset="confirm")
 
     async with TestClient(app) as client:
         listed = await _mcp_call(
             client,
-            secret=minted.secret,
+            secret=desk.secret,
             method="tools/list",
             rpc_id=1,
         )
         names = {t["name"] for t in listed["result"]["tools"]}
-        assert "seal_pidge" not in names
+        assert "seal_pidge" in names
         assert "propose_seal" in names
-        assert not any(n == "seal" or n.startswith("seal_") for n in names)
 
+        for secret, rpc_id in ((desk.secret, 2), (confirm.secret, 3)):
+            denied = await _mcp_call(
+                client,
+                secret=secret,
+                method="tools/call",
+                rpc_id=rpc_id,
+                params={
+                    "name": "seal_pidge",
+                    "arguments": {"pidge_id": draft.id},
+                },
+            )
+            assert "error" in denied
+            detail = str(denied["error"])
+            assert "pidge:seal" in detail or "Missing scopes" in detail
+        assert service.store.get_pidge(draft.id).state == "draft"
+
+
+async def test_autopilot_can_seal_when_ready(app, service: PidgeService) -> None:
+    """Autopilot with pidge:seal seals a ready draft and creates the hold."""
+    owner, _lucy = _setup_loft(service)
+    draft = _ready_draft(service, owner)
+    auto = service.mint_agent_token(owner, label="Auto", preset="autopilot")
+
+    async with TestClient(app) as client:
+        sealed = await _mcp_call(
+            client,
+            secret=auto.secret,
+            method="tools/call",
+            rpc_id=1,
+            params={
+                "name": "seal_pidge",
+                "arguments": {"pidge_id": draft.id},
+            },
+        )
+        assert "error" not in sealed
+        msg = service.store.get_pidge(draft.id)
+        assert msg.state == "sealed"
+        holds = service.store.list_holds(owner.id)
+        assert any(h.pidge_id == draft.id and h.state == "confirmed" for h in holds)
+
+
+async def test_autopilot_seal_requires_ready_slots(
+    app, service: PidgeService
+) -> None:
+    owner, _lucy = _setup_loft(service)
+    draft = service.draft_pidge(owner, intent="Incomplete", recipient_names=["Lucy"])
+    auto = service.mint_agent_token(owner, label="Auto", preset="autopilot")
+
+    async with TestClient(app) as client:
+        failed = await _mcp_call(
+            client,
+            secret=auto.secret,
+            method="tools/call",
+            rpc_id=1,
+            params={
+                "name": "seal_pidge",
+                "arguments": {"pidge_id": draft.id},
+            },
+        )
+        assert "error" in failed
+        assert service.store.get_pidge(draft.id).state == "draft"
+
+
+async def test_ui_seal_still_requires_session(app, service: PidgeService) -> None:
+    """Unauth seal fails; author session still seals when ready."""
+    owner, _lucy = _setup_loft(service)
+    draft = _ready_draft(service, owner)
+    assert draft.state == "draft"
+
+    async with TestClient(app) as client:
         unauth = await client.post(f"/compose/{draft.id}/seal", data={})
         assert unauth.status in {302, 401, 403}
         if unauth.status == 302:
             location = _header(unauth, "location") or ""
             assert "/login" in location
 
-        # Loft already exists via service.setup — author authenticates through /login.
         login_page = await client.get("/login")
         assert login_page.status == 200
         chirp_cookie = _cookie(login_page, "chirp_session")

@@ -23,7 +23,9 @@ from chirp.middleware.static import StaticFiles
 
 from pidge.config import (
     ALL_AGENT_SCOPES,
+    AUTOPILOT_TOKEN_TTL_DAYS,
     DEFAULT_TOKEN_PRESET,
+    DESK_TOKEN_TTL_DAYS,
     infer_preset,
     PidgeConfig,
 )
@@ -284,6 +286,23 @@ def create_app(
             ],
             "expires_at": result.challenge.expires_at.isoformat(),
             "seal_url": result.seal_url,
+        }
+
+    @app.tool(
+        "seal_pidge",
+        description=(
+            "Seal a ready draft over MCP. Requires Autopilot scope pidge:seal. "
+            "Irreversible — prefer propose_seal unless the human opted into Autopilot."
+        ),
+    )
+    def seal_pidge_tool(pidge_id: int) -> dict[str, Any]:
+        _, owner = require_agent("pidge:seal")
+        sealed = service.seal_pidge(owner, pidge_id)
+        return {
+            "id": sealed.id,
+            "state": sealed.state,
+            "summary": sealed.summary,
+            "slots": sealed.slots,
         }
 
     # --- HTTP routes -------------------------------------------------------
@@ -720,6 +739,7 @@ def create_app(
             default_preset=DEFAULT_TOKEN_PRESET,
             infer_preset=infer_preset,
             minted_secret=None,
+            minted_preset=None,
             mcp_url=_mcp_url(request),
             error=None,
         )
@@ -736,17 +756,33 @@ def create_app(
                 service.revoke_agent_token(user, int(form.get("token_id", "0")))
             return Redirect("/settings/agents")
         preset = str(form.get("preset", DEFAULT_TOKEN_PRESET)).strip() or DEFAULT_TOKEN_PRESET
-        try:
-            result = service.mint_agent_token(
-                user,
-                label=str(form.get("label", "Agent")),
-                preset=preset,
-            )
-            error = None
-            secret = result.secret
-        except ValueError as exc:
-            error = str(exc)
-            secret = None
+        error = None
+        secret = None
+        minted_preset = None
+        if preset == "autopilot":
+            ack = str(form.get("acknowledge_autopilot", "")).strip().lower()
+            if ack not in {"1", "on", "true", "yes"}:
+                error = (
+                    "Autopilot mint requires acknowledging that this token can "
+                    "seal Pidges over MCP."
+                )
+            days = AUTOPILOT_TOKEN_TTL_DAYS
+        else:
+            days = DESK_TOKEN_TTL_DAYS
+        if error is None:
+            try:
+                result = service.mint_agent_token(
+                    user,
+                    label=str(form.get("label", "Agent")),
+                    preset=preset,
+                    days=days,
+                )
+                secret = result.secret
+                minted_preset = preset
+            except ValueError as exc:
+                error = str(exc)
+                secret = None
+                minted_preset = None
         return render(
             request,
             "agents.html",
@@ -755,6 +791,7 @@ def create_app(
             default_preset=DEFAULT_TOKEN_PRESET,
             infer_preset=infer_preset,
             minted_secret=secret,
+            minted_preset=minted_preset,
             mcp_url=_mcp_url(request),
             error=error,
         )

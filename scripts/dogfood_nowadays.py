@@ -47,7 +47,7 @@ Agent MCP curl recipe (mint a token under Settings → Agents first)::
               \"extras\":{\"menu\":\"kitchen + wine\"}
             }}}'
 
-Humans seal in the UI (agents cannot seal). Lucy RSVPs from her inbox thread.
+Humans seal in the UI by default; Autopilot tokens with pidge:seal may seal over MCP. Lucy RSVPs from her inbox thread.
 """
 
 from __future__ import annotations

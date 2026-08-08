@@ -443,6 +443,15 @@ a:hover {
   color: var(--leather);
 }
 
+.badge.autopilot {
+  background: color-mix(in oklab, #8b3a2a 18%, white);
+  color: #8b3a2a;
+}
+
+.autopilot-warn {
+  color: #8b3a2a;
+}
+
 /* Thread */
 .thread-layout {
   display: grid;
