@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 from chirp import EventStream, Fragment, Page
 from chirp.app import App
 from chirp.config import AppConfig
-from chirp.errors import HTTPError
 from chirp.health import HealthCheck
 from chirp.http.cookies import SetCookie
 from chirp.http.request import Request
@@ -123,12 +122,15 @@ def create_app(
         )
 
     def require_agent(*scopes: str) -> tuple[AgentClient, User]:
+        # Raise plain PermissionError (not chirp.HTTPError): frozen HTTPError
+        # cannot carry a traceback under Chirp's tool.call trace_span, which
+        # collapses MCP auth failures into an opaque FrozenInstanceError.
         client = get_user()
         if not isinstance(client, AgentClient):
-            raise HTTPError(status=401, detail="Agent bearer token required.")
+            raise PermissionError("Agent bearer token required.")
         missing = [s for s in scopes if s not in client.scopes]
         if missing:
-            raise HTTPError(status=403, detail=f"Missing scopes: {', '.join(missing)}")
+            raise PermissionError(f"Missing scopes: {', '.join(missing)}")
         owner = service.store.get_user(client.owner_user_id)
         return client, owner
 
