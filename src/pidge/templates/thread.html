@@ -21,7 +21,9 @@
 <div class="page-head">
   <div>
     <p class="kicker">
-      {% if settled and rsvp_yes %}{% if is_author %}Your thread · settled{% else %}Invite · accepted{% end %}
+      {% if message.state == "revoked" %}Invite · revoked
+      {% elif message.state == "superseded" %}Invite · superseded
+      {% elif settled and rsvp_yes %}{% if is_author %}Your thread · settled{% else %}Invite · accepted{% end %}
       {% elif settled %}{% if declined %}Invite · declined{% else %}Invite · noted{% end %}
       {% elif message.state == "sealed" %}Invite · sealed
       {% else %}{{ message.state }}
@@ -33,6 +35,14 @@
 </div>
 
 {% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if message.state == "revoked" %}
+<p class="hint">Revoked — hidden from active inbox and sent. Seal hash unchanged.</p>
+{% elif message.state == "superseded" %}
+<p class="hint">Superseded — a successor draft replaced this sealed message.</p>
+{% end %}
+{% if message.supersedes_id %}
+<p class="hint">Successor of sealed <a href="/p/{{ message.supersedes_id }}">#{{ message.supersedes_id }}</a>.</p>
+{% end %}
 
 {% if message.state == "sealed" or message.state == "draft" %}
 <div class="steps-rail" aria-label="Thread status">
@@ -58,7 +68,7 @@
           invite · pidge:{{ message.id }}{% if message.content_hash %} · {{ message.content_hash[:8] }}{% end %}
         </div>
       </div>
-      {% if message.content_hash %}
+      {% if message.content_hash and message.state == "sealed" %}
       <span class="verified">Sealed · verified</span>
       {% elif message.state == "sealed" %}
       <span class="verified">Sealed</span>
@@ -190,6 +200,16 @@
       {{ csrf_field() }}
       <input type="hidden" name="pidge_id" value="{{ message.id }}">
       <button class="btn btn-ghost" type="submit">Pin to wall</button>
+    </form>
+    {% end %}
+    {% if is_author and message.state == "sealed" %}
+    <form method="post" action="/p/{{ message.id }}/revoke">
+      {{ csrf_field() }}
+      <button class="btn btn-ghost" type="submit">Revoke</button>
+    </form>
+    <form method="post" action="/p/{{ message.id }}/supersede">
+      {{ csrf_field() }}
+      <button class="btn btn-seal" type="submit">Supersede</button>
     </form>
     {% end %}
     {% if is_author %}
