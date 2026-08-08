@@ -424,6 +424,14 @@ class PidgeService:
             )
         return sealed
 
+    def discard_pidge(self, user: User, pidge_id: int) -> PidgeMessage:
+        msg = self.store.get_pidge(pidge_id)
+        if msg.author_id != user.id:
+            raise PermissionError("Only the author can discard this draft.")
+        if msg.state != "draft":
+            raise PermissionError("Only drafts can be discarded.")
+        return self.store.discard_pidge(pidge_id, datetime.now(UTC))
+
     def get_pidge_for(self, user: User, pidge_id: int) -> PidgeMessage:
         msg = self.store.get_pidge(pidge_id)
         if msg.author_id == user.id:

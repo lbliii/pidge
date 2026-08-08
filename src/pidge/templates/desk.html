@@ -23,7 +23,17 @@
     <article>
       <h3>Drafts</h3>
       {% if drafts %}
-        <ul>{% for m in drafts %}<li><a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a></li>{% end %}</ul>
+        <ul>
+          {% for m in drafts %}
+          <li class="desk-draft">
+            <a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a>
+            <form method="post" action="/compose/{{ m.id }}/discard">
+              {{ csrf_field() }}
+              <button class="btn btn-ghost" type="submit">Discard</button>
+            </form>
+          </li>
+          {% end %}
+        </ul>
       {% else %}
         <p class="hint">No drafts. Point an agent with a scoped token at <code>/mcp</code>.</p>
       {% end %}

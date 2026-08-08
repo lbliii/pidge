@@ -63,6 +63,12 @@
         {% else %}
         <p class="hint">Sealed. <a href="/p/{{ message.id }}">Open thread</a></p>
         {% end %}
+        {% if message.state == "draft" %}
+        <form method="post" action="/compose/{{ message.id }}/discard" class="compose-discard">
+          {{ csrf_field() }}
+          <button class="btn btn-ghost" type="submit">Discard draft</button>
+        </form>
+        {% end %}
       </div>
       {% end %}
     </div>

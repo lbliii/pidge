@@ -178,6 +178,12 @@ def create_app(
             for m in service.store.list_drafts(owner.id)
         ]
 
+    @app.tool("discard_pidge", description="Discard one of the owner's draft Pidges.")
+    def discard_pidge_tool(pidge_id: int) -> dict[str, Any]:
+        _, owner = require_agent("pidge:draft")
+        msg = service.discard_pidge(owner, pidge_id)
+        return {"id": msg.id, "state": msg.state}
+
     @app.tool("get_pidge", description="Fetch one Pidge the owner can see.")
     def get_pidge_tool(pidge_id: int) -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
@@ -387,6 +393,8 @@ def create_app(
             msg = service.get_pidge_for(user, draft_id)
         except (LookupError, PermissionError):
             return Response("Not found", status=404)
+        if msg.state == "revoked":
+            return Redirect("/compose")
         return render(request, "compose.html", **_compose_context(service, msg))
 
     @app.route("/compose/{draft_id:int}/seal", methods=["POST"], referenced=True)
@@ -404,6 +412,17 @@ def create_app(
                 **_compose_context(service, msg, error=str(exc)),
             )
         return Redirect(f"/p/{sealed.id}")
+
+    @app.route("/compose/{draft_id:int}/discard", methods=["POST"], referenced=True)
+    async def discard_draft(request: Request, draft_id: int):
+        user = _gate(request, require_human)
+        if isinstance(user, Response):
+            return user
+        try:
+            service.discard_pidge(user, draft_id)
+        except (PermissionError, LookupError):
+            return Response("Not found", status=404)
+        return Redirect("/compose")
 
     @app.route("/compose/{draft_id:int}/flight", referenced=True)
     def compose_flight_feed(request: Request, draft_id: int):
