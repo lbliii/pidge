@@ -21,16 +21,24 @@ DESK_SCOPES = frozenset(
 # Confirm = Desk + propose_seal (human still seals via one-shot challenge URL).
 CONFIRM_SCOPES = DESK_SCOPES | frozenset({"pidge:seal.propose"})
 
+# Autopilot = Confirm + direct MCP seal (high trust; mint requires acknowledge).
+AUTOPILOT_SCOPES = CONFIRM_SCOPES | frozenset({"pidge:seal"})
+
 TOKEN_PRESETS: dict[str, frozenset[str]] = {
     "draft": frozenset({"pidge:draft"}),
     "desk": DESK_SCOPES,
     "confirm": CONFIRM_SCOPES,
+    "autopilot": AUTOPILOT_SCOPES,
 }
 
 DEFAULT_TOKEN_PRESET = "desk"
 
-# Registerable scopes for agent tokens. Autopilot pidge:seal is intentionally absent.
-ALL_AGENT_SCOPES = CONFIRM_SCOPES
+# Desk / Draft / Confirm tokens expire after 90 days; Autopilot after 30.
+DESK_TOKEN_TTL_DAYS = 90
+AUTOPILOT_TOKEN_TTL_DAYS = 30
+
+# Registerable scopes for agent tokens (includes opt-in Autopilot seal).
+ALL_AGENT_SCOPES = AUTOPILOT_SCOPES
 
 # Backward-compatible alias; prefer DESK_SCOPES / ALL_AGENT_SCOPES at call sites.
 AGENT_SCOPES = DESK_SCOPES

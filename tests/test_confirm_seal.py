@@ -355,5 +355,7 @@ async def test_agents_ui_enables_confirm(app, service: PidgeService) -> None:
         agents = await client.get("/settings/agents", headers={"Cookie": session})
         assert agents.status == 200
         assert 'name="preset" value="confirm"' in agents.text
+        assert 'name="preset" value="autopilot"' in agents.text
         assert "Autopilot" in agents.text
-        assert agents.text.lower().count("coming soon") == 1
+        assert "coming soon" not in agents.text.lower()
+        assert "acknowledge_autopilot" in agents.text

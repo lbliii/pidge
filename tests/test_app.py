@@ -222,7 +222,7 @@ async def test_agent_token_mcp_tools(app, service: PidgeService) -> None:
         names = {t["name"] for t in payload["result"]["tools"]}
         assert "draft_pidge" in names
         assert "enrich_pidge" in names
-        assert "seal_pidge" not in names
+        assert "seal_pidge" in names  # listed for schema; runtime scope-gated
 
         drafted = await client.post(
             "/mcp",
