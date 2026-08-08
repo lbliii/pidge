@@ -275,6 +275,148 @@ async def test_cannot_seal_without_slots(service: PidgeService) -> None:
         service.seal_pidge(owner, draft.id)
 
 
+async def test_author_can_discard_draft(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    draft = service.draft_pidge(owner, intent="scratch idea", recipient_names=["Lucy"])
+    discarded = service.discard_pidge(owner, draft.id)
+    assert discarded.state == "revoked"
+    assert service.store.list_drafts(owner.id) == ()
+    assert service.store.list_inbox(lucy.id) == ()
+    assert service.store.list_sent(owner.id) == ()
+
+
+async def test_non_author_cannot_discard_draft(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    lucy = service.register(
+        username="lucy", display_name="Lucy", password="password-long"
+    ).user
+    draft = service.draft_pidge(owner, intent="private draft", recipient_names=["Lucy"])
+    with pytest.raises(PermissionError, match="author"):
+        service.discard_pidge(lucy, draft.id)
+    assert service.store.get_pidge(draft.id).state == "draft"
+    assert len(service.store.list_drafts(owner.id)) == 1
+
+
+async def test_cannot_discard_sealed_pidge(service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    service.register(username="lucy", display_name="Lucy", password="password-long")
+    draft = service.draft_pidge(owner, intent="meet", recipient_names=["Lucy"])
+    service.enrich_pidge(
+        owner,
+        draft.id,
+        who="Lucy",
+        when="tonight",
+        where="Nowadays",
+    )
+    sealed = service.seal_pidge(owner, draft.id)
+    with pytest.raises(PermissionError, match="drafts"):
+        service.discard_pidge(owner, sealed.id)
+    assert service.store.get_pidge(sealed.id).state == "sealed"
+
+
+async def test_discard_draft_via_compose_and_mcp(app, service: PidgeService) -> None:
+    owner = service.setup(
+        bootstrap_token="development-bootstrap-token",
+        loft_name="Test Loft",
+        username="owner",
+        display_name="Owner",
+        password="password-long",
+    ).user
+    service.register(username="lucy", display_name="Lucy", password="password-long")
+    draft = service.draft_pidge(owner, intent="throw away", recipient_names=["Lucy"])
+    other = service.draft_pidge(owner, intent="keep for mcp", recipient_names=["Lucy"])
+    minted = service.mint_agent_token(owner, label="Secretary")
+
+    async with TestClient(app) as client:
+        login_page = await client.get("/login")
+        assert login_page.status == 200
+        chirp_cookie = _cookie(login_page, "chirp_session")
+        assert chirp_cookie is not None
+        login = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(login_page),
+                "username": "owner",
+                "password": "password-long",
+            },
+            headers={"Cookie": chirp_cookie},
+        )
+        assert login.status == 302
+        pidge_cookie = _cookie(login, SESSION_COOKIE)
+        updated_chirp = _cookie(login, "chirp_session") or chirp_cookie
+        assert pidge_cookie is not None
+        cookies = f"{updated_chirp}; {pidge_cookie}"
+
+        compose = await client.get(f"/compose/{draft.id}", headers={"Cookie": cookies})
+        assert compose.status == 200
+        assert "Discard draft" in compose.text
+        discarded = await client.post(
+            f"/compose/{draft.id}/discard",
+            data={"_csrf_token": _csrf(compose)},
+            headers={"Cookie": cookies},
+        )
+        assert discarded.status == 302
+        location = next(
+            (v for h, v in discarded.headers if h.lower() == "location"),
+            "",
+        )
+        assert location == "/compose"
+        assert service.store.get_pidge(draft.id).state == "revoked"
+        assert all(m.id != draft.id for m in service.store.list_drafts(owner.id))
+
+        desk = await client.get("/", headers={"Cookie": cookies})
+        assert desk.status == 200
+        assert "throw away" not in desk.text
+
+        listed = await client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "method": "tools/list", "id": 1, "params": {}},
+            headers={"Authorization": f"Bearer {minted.secret}"},
+        )
+        names = {t["name"] for t in json.loads(listed.text)["result"]["tools"]}
+        assert "discard_pidge" in names
+
+        via_mcp = await client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "id": 2,
+                "params": {
+                    "name": "discard_pidge",
+                    "arguments": {"pidge_id": other.id},
+                },
+            },
+            headers={"Authorization": f"Bearer {minted.secret}"},
+        )
+        assert via_mcp.status == 200
+        body = json.loads(via_mcp.text)
+        assert "result" in body
+        assert service.store.get_pidge(other.id).state == "revoked"
+        assert service.store.list_drafts(owner.id) == ()
+
+
 async def test_ready_endpoint(app) -> None:
     async with TestClient(app) as client:
         response = await client.get("/ready")

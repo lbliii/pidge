@@ -40,7 +40,7 @@ Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pi
 
 1. Log in → **Agents** → mint a token (Desk by default)
 2. Copy the Cursor snippet from that page into `~/.cursor/mcp.json` (URL + `Authorization: Bearer …`)
-3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI
+3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI. Discard unwanted drafts with `discard_pidge` (scope `pidge:draft`) or the Discard button on compose/desk — discarded drafts become `revoked` and leave draft lists. Sealed Pidges stay immutable.
 
 ### MCP curl recipe
 

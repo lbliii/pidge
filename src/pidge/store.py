@@ -228,6 +228,7 @@ class Store(Protocol):
         self, pidge_id: int, *, summary: str, slots: dict[str, Any], intent: str | None = None
     ) -> PidgeMessage: ...
     def seal_pidge(self, pidge_id: int, seal_user_id: int, now: datetime) -> PidgeMessage: ...
+    def discard_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage: ...
     def get_pidge(self, pidge_id: int) -> PidgeMessage: ...
     def list_drafts(self, author_id: int) -> tuple[PidgeMessage, ...]: ...
     def list_inbox(self, user_id: int) -> tuple[PidgeMessage, ...]: ...
@@ -682,6 +683,28 @@ class MemoryStore:
                 content_hash=digest,
                 sealed_at=now,
                 seal_user_id=seal_user_id,
+                created_at=msg.created_at,
+                updated_at=now,
+                author_name=msg.author_name,
+            )
+            self._pidges[pidge_id] = updated
+            return updated
+
+    def discard_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage:
+        with self._lock:
+            msg = self._pidges[pidge_id]
+            if msg.state != "draft":
+                raise PermissionError("Only drafts can be discarded.")
+            updated = PidgeMessage(
+                id=msg.id,
+                author_id=msg.author_id,
+                state="revoked",
+                summary=msg.summary,
+                intent=msg.intent,
+                slots=dict(msg.slots),
+                content_hash=msg.content_hash,
+                sealed_at=msg.sealed_at,
+                seal_user_id=msg.seal_user_id,
                 created_at=msg.created_at,
                 updated_at=now,
                 author_name=msg.author_name,
@@ -1413,6 +1436,49 @@ class PostgresStore:
                           sealed_at, seal_user_id, created_at, updated_at
                 """,
                 (digest, now, seal_user_id, now, pidge_id),
+            ).fetchone()
+            author = conn.execute(
+                "SELECT display_name FROM users WHERE id = %s", (updated[1],)
+            ).fetchone()
+            conn.commit()
+        return PidgeMessage(
+            id=updated[0],
+            author_id=updated[1],
+            state=updated[2],
+            summary=updated[3],
+            intent=updated[4],
+            slots=updated[5] if isinstance(updated[5], dict) else json.loads(updated[5]),
+            content_hash=updated[6],
+            sealed_at=updated[7],
+            seal_user_id=updated[8],
+            created_at=updated[9],
+            updated_at=updated[10],
+            author_name=author[0] if author else "",
+        )
+
+    def discard_pidge(self, pidge_id: int, now: datetime) -> PidgeMessage:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, author_id, state, summary, intent, slots, content_hash,
+                       sealed_at, seal_user_id, created_at, updated_at
+                FROM pidges WHERE id = %s FOR UPDATE
+                """,
+                (pidge_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError(pidge_id)
+            if row[2] != "draft":
+                raise PermissionError("Only drafts can be discarded.")
+            updated = conn.execute(
+                """
+                UPDATE pidges
+                SET state = 'revoked', updated_at = %s
+                WHERE id = %s
+                RETURNING id, author_id, state, summary, intent, slots, content_hash,
+                          sealed_at, seal_user_id, created_at, updated_at
+                """,
+                (now, pidge_id),
             ).fetchone()
             author = conn.execute(
                 "SELECT display_name FROM users WHERE id = %s", (updated[1],)
