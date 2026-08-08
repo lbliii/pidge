@@ -126,6 +126,14 @@ a:hover {
   color: #fff8f0;
 }
 
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--ink);

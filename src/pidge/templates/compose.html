@@ -1,14 +1,28 @@
 {% extends "layout.html" %}
 {% block title %}Draft {{ message.id }} — Pidge{% end %}
+{% block head_extra %}
+{% if message.state == "draft" %}
+{# htmx 2 managed bundle is core-only; SSE extension is required for sse-connect. #}
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/ext/sse.js"></script>
+{% end %}
+{% end %}
 {% block page_content %}
 <div class="page-head">
   <div>
-    <p class="kicker">Dictate → fly → seal</p>
+    <p class="kicker">Agent inbound → fly → seal</p>
     <h1>Draft #{{ message.id }}</h1>
   </div>
 </div>
 {% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
-<div class="thread-layout">
+{# sse-eager-connect: intentional — live enrich while the draft is open #}
+<div
+  class="thread-layout"
+  {% if message.state == "draft" %}
+  hx-ext="sse"
+  sse-connect="/compose/{{ message.id }}/flight"
+  hx-disinherit="hx-target hx-swap"
+  {% end %}
+>
   <div class="compose-panel">
     <p class="hint">Intent</p>
     <p><strong>{{ message.intent }}</strong></p>
@@ -16,47 +30,69 @@
     <p>{{ message.summary }}</p>
     <p class="hint">Recipients</p>
     <ul>{% for r in recipients %}<li>{{ r.display_name }}</li>{% end %}</ul>
-    <p class="hint">Slots</p>
-    <ul>
-      {% for key, slot in message.slots.items() %}
-      <li><code>{{ key }}</code> · {{ slot.status }}{% if slot.value %} · {{ slot.value }}{% end %}</li>
+    <div sse-swap="compose_live" hx-target="this" class="compose-live-sink">
+      {% block compose_live %}
+      <div id="compose-live" class="compose-live">
+        <p class="hint">Slots</p>
+        <ul class="slot-list">
+          {% for key in ("who", "when", "where") %}
+          {% set slot = message.slots.get(key, {"status": "pending", "value": None}) %}
+          <li class="slot-row is-{{ slot.status }}">
+            <code>{{ key }}</code>
+            <span class="slot-status">{{ slot.status }}</span>
+            {% if slot.value %}<span class="mono">{{ slot.value }}</span>{% elif slot.status == "none" %}<span class="mono">marked none</span>{% else %}<span class="mono">waiting</span>{% end %}
+          </li>
+          {% end %}
+          {% if message.slots.get("extras") %}
+          <li class="slot-row is-{{ message.slots['extras'].status }}">
+            <code>extras</code>
+            <span class="slot-status">{{ message.slots['extras'].status }}</span>
+            <span class="mono">{{ message.slots['extras'].value }}</span>
+          </li>
+          {% end %}
+        </ul>
+        {% if message.state == "draft" and can_seal %}
+        <p class="hint seal-ready">Slots ready — seal to send.</p>
+        <form method="post" action="/compose/{{ message.id }}/seal">
+          {{ csrf_field() }}
+          <button class="btn btn-seal" type="submit">Seal</button>
+        </form>
+        {% elif message.state == "draft" %}
+        <p class="hint seal-blocked">{{ seal_block_reason or "Fill who / when / where (or mark none) via enrich_pidge before sealing." }}</p>
+        <button class="btn btn-seal" type="button" disabled title="{{ seal_block_reason or 'Slots incomplete' }}">Seal</button>
+        {% else %}
+        <p class="hint">Sealed. <a href="/p/{{ message.id }}">Open thread</a></p>
+        {% end %}
+      </div>
       {% end %}
-    </ul>
-    {% if can_seal and message.state == "draft" %}
-    <form method="post" action="/compose/{{ message.id }}/seal">
-      {{ csrf_field() }}
-      <button class="btn btn-seal" type="submit">Seal</button>
-    </form>
-    {% elif message.state == "draft" %}
-    <p class="hint">Fill who / when / where (or mark none) via <code>enrich_pidge</code> before sealing.</p>
-    {% else %}
-    <p class="hint">Sealed. <a href="/p/{{ message.id }}">Open thread</a></p>
+    </div>
+  </div>
+  <div sse-swap="flight_rail" hx-target="this" class="flight-rail-sink">
+    {% block flight_rail %}
+    <aside class="flight-rail" id="flight-rail">
+      <h2>Flight</h2>
+      {% if flight %}
+        <p class="hint">State: {{ flight.state }}</p>
+        {% if flight.state == "flying" %}
+        <div class="flight-track" aria-hidden="true"><span></span></div>
+        {% end %}
+        <ul class="ride-log">
+          {% for step in steps %}
+          <li class="is-{{ step.state }}">
+            <span class="ride-dot" aria-hidden="true"></span>
+            <strong>{{ step.label }}</strong>
+            <span class="mono">{{ step.detail }}</span>
+          </li>
+          {% end %}
+        </ul>
+        {% if message.state == "draft" %}
+        <p class="hint">Live via agent <code>enrich_pidge</code> · SSE</p>
+        {% end %}
+      {% else %}
+        <p class="hint">No flight yet.</p>
+      {% end %}
+    </aside>
     {% end %}
   </div>
-  {% block flight_rail %}
-  <aside class="flight-track" id="flight-rail">
-    <h2>Flight</h2>
-    {% if flight %}
-      <p class="hint">State: {{ flight.state }}</p>
-      <ol>
-        {% for step in steps %}
-        <li class="ride-step is-{{ step.state }}">
-          <strong>{{ step.label }}</strong>
-          <span>{{ step.detail }}</span>
-        </li>
-        {% end %}
-      </ol>
-      {% if message.state == "draft" %}
-      <p class="hint">
-        Live updates:
-        <a href="/compose/{{ message.id }}">refresh</a>
-        · SSE at <code>/compose/{{ message.id }}/flight</code>
-      </p>
-      {% end %}
-    {% else %}
-      <p class="hint">No flight yet.</p>
-    {% end %}
-  </aside>
-  {% end %}
 </div>
 {% end %}
