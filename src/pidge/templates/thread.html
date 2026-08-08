@@ -1,47 +1,200 @@
 {% extends "layout.html" %}
 {% block title %}{{ message.summary }} — Pidge{% end %}
 {% block page_content %}
+{% set is_author = viewer and message.author_id == viewer.id %}
+{% set act_kinds = acts|map(attribute="kind")|list %}
+{% set rsvp_yes = "rsvp_yes" in act_kinds %}
+{% set rsvp_no = "rsvp_no" in act_kinds %}
+{% set declined = "decline" in act_kinds %}
+{% set settled = rsvp_yes or rsvp_no or declined %}
+
+{% if is_recipient and viewer %}
+<div class="recipient-bar">
+  <div>
+    <strong>{{ viewer.display_name }}’s Pidge</strong>
+    <div class="mono" style="font-size: 0.8rem; color: var(--mist)">{{ viewer.username }} · recipient graph</div>
+  </div>
+  <a class="btn btn-ghost" href="/inbox">Inbox</a>
+</div>
+{% end %}
+
 <div class="page-head">
   <div>
-    <p class="kicker">{{ message.state }}</p>
+    <p class="kicker">
+      {% if settled and rsvp_yes %}{% if is_author %}Your thread · settled{% else %}Invite · accepted{% end %}
+      {% elif settled %}{% if declined %}Invite · declined{% else %}Invite · noted{% end %}
+      {% elif message.state == "sealed" %}Invite · sealed
+      {% else %}{{ message.state }}
+      {% end %}
+    </p>
     <h1>{{ message.summary }}</h1>
   </div>
+  <a class="btn btn-ghost" href="/inbox">Inbox</a>
 </div>
+
 {% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
-<p class="lede">From {{ message.author_name }} · intent: {{ message.intent }}</p>
-<ul>
-  {% for r in recipients %}<li>To {{ r.display_name }}</li>{% end %}
-</ul>
-<ul>
-  {% for key, slot in message.slots.items() %}
-  <li><code>{{ key }}</code>: {% if slot.value %}{{ slot.value }}{% else %}{{ slot.status }}{% end %}</li>
-  {% end %}
-</ul>
-{% if message.content_hash %}
-<p class="hint">Seal hash <code>{{ message.content_hash[:16] }}…</code></p>
+
+{% if message.state == "sealed" or message.state == "draft" %}
+<div class="steps-rail" aria-label="Thread status">
+  <span class="step-chip is-done">Dictated</span>
+  <span class="step-chip is-done">Flew</span>
+  <span class="step-chip{% if message.state == 'sealed' or message.content_hash %} is-done{% elif message.state == 'draft' %} is-active{% end %}">Sealed</span>
+  <span class="step-chip{% if message.state == 'sealed' %} is-done{% end %}">Delivered</span>
+  <span class="step-chip{% if rsvp_yes %} is-done is-active{% elif settled %} is-done{% elif message.state == 'sealed' %} is-active{% end %}">
+    {% if rsvp_yes %}Accepted{% elif rsvp_no %}Maybe{% elif declined %}Declined{% else %}RSVP{% end %}
+  </span>
+</div>
 {% end %}
 
-{% if is_recipient and message.state == "sealed" %}
-<form method="post" action="/p/{{ message.id }}/act" class="hero-actions">
-  {{ csrf_field() }}
-  <button class="btn btn-seal" name="kind" value="rsvp_yes" type="submit">RSVP yes</button>
-  <button class="btn btn-ghost" name="kind" value="rsvp_no" type="submit">RSVP no</button>
-  <button class="btn btn-ghost" name="kind" value="decline" type="submit">Decline</button>
-</form>
-{% end %}
+<div class="thread-layout">
+  <article class="bubble">
+    <header>
+      <div>
+        <span class="from">
+          {% if is_author %}You{% else %}{{ message.author_name }}{% end %}
+          {% if recipients %} → {% for r in recipients %}{{ r.display_name }}{% if not loop.last %}, {% end %}{% end %}{% end %}
+        </span>
+        <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
+          invite · pidge:{{ message.id }}{% if message.content_hash %} · {{ message.content_hash[:8] }}{% end %}
+        </div>
+      </div>
+      {% if message.content_hash %}
+      <span class="verified">Sealed · verified</span>
+      {% elif message.state == "sealed" %}
+      <span class="verified">Sealed</span>
+      {% else %}
+      <span class="badge">{{ message.state }}</span>
+      {% end %}
+    </header>
 
-<form method="post" action="/wall/pin">
-  {{ csrf_field() }}
-  <input type="hidden" name="pidge_id" value="{{ message.id }}">
-  <button class="btn btn-ghost" type="submit">Pin to wall</button>
-</form>
+    <p class="intent">“{{ message.intent }}”</p>
 
-<section>
-  <h2>Acts</h2>
-  {% if acts %}
-  <ul>{% for a in acts %}<li>{{ a.actor_name }} · {{ a.kind }}</li>{% end %}</ul>
-  {% else %}
-  <p class="hint">No acts yet.</p>
+    <div class="cards">
+      {% set when = message.slots.get("when") %}
+      {% set where = message.slots.get("where") %}
+      {% set who = message.slots.get("who") %}
+      {% set extras = message.slots.get("extras") %}
+      <div class="card">
+        <h3>When</h3>
+        {% if when and when.value %}
+        <p>{{ when.value }}</p>
+        {% elif when %}
+        <p class="mono">{{ when.status }}</p>
+        {% else %}
+        <p class="mono">—</p>
+        {% end %}
+      </div>
+      <div class="card map-card">
+        <h3>Where</h3>
+        <div class="map-pin" aria-hidden="true"></div>
+        {% if where and where.value %}
+        <p>{{ where.value }}</p>
+        {% elif where %}
+        <p class="mono">{{ where.status }}</p>
+        {% else %}
+        <p class="mono">—</p>
+        {% end %}
+      </div>
+      <div class="card">
+        <h3>{% if extras and extras.value %}Extras{% else %}Who{% end %}</h3>
+        {% if extras and extras.value %}
+        <p>{{ extras.value }}</p>
+        {% elif who and who.value %}
+        <p>{{ who.value }}</p>
+        {% elif who %}
+        <p class="mono">{{ who.status }}</p>
+        {% else %}
+        <p class="mono">—</p>
+        {% end %}
+      </div>
+    </div>
+
+    {% if message.content_hash %}
+    <p class="hint" style="margin-top: 1rem; margin-bottom: 0">Seal hash <code>{{ message.content_hash[:16] }}…</code></p>
+    {% end %}
+
+    {% if is_recipient and message.state == "sealed" and not settled %}
+    <form method="post" action="/p/{{ message.id }}/act" class="rsvp-choice">
+      {{ csrf_field() }}
+      <button class="is-yes" name="kind" value="rsvp_yes" type="submit">RSVP yes</button>
+      <button name="kind" value="rsvp_no" type="submit">RSVP no</button>
+      <button name="kind" value="decline" type="submit">Decline</button>
+    </form>
+    {% end %}
+  </article>
+
+  {% if settled %}
+  <article class="bubble" style="animation-delay: 100ms">
+    {% if rsvp_yes %}
+    <p class="confetti-line">{% if is_recipient and not is_author %}You’re in{% else %}They’re in{% end %}</p>
+    {% end %}
+    <header>
+      <div>
+        <span class="from">
+          {% if rsvp_yes %}RSVP sealed{% elif rsvp_no %}Maybe{% else %}Declined{% end %}
+        </span>
+        <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
+          act · pidge:{{ message.id }}
+        </div>
+      </div>
+      {% if rsvp_yes %}
+      <span class="verified">Verified</span>
+      {% elif rsvp_no %}
+      <span class="verified">Noted</span>
+      {% end %}
+    </header>
+    {% if rsvp_yes %}
+    <p class="intent" style="margin-bottom: 0.45rem">Accepted · calendar hold confirmed</p>
+    <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">
+      {% if is_recipient and not is_author %}
+      Hold written on your graph. Sender thread updated.
+      {% else %}
+      Calendar hold confirmed. You’re synced.
+      {% end %}
+    </p>
+    {% elif rsvp_no %}
+    <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">Tentative hold noted. They can upgrade to Accept anytime.</p>
+    {% else %}
+    <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">Sealed decline rides back — no guilt prose required.</p>
+    {% end %}
+    {% if acts %}
+    <ul class="timeline">
+      {% for a in acts %}
+      <li>
+        <time>{{ a.created_at.strftime("%H:%M:%S") }}</time>
+        <span>{{ a.actor_name }} · {{ a.kind }}</span>
+      </li>
+      {% end %}
+    </ul>
+    {% end %}
+  </article>
+  {% elif acts %}
+  <article class="bubble" style="animation-delay: 100ms">
+    <header>
+      <span class="from">Acts</span>
+    </header>
+    <ul class="timeline">
+      {% for a in acts %}
+      <li>
+        <time>{{ a.created_at.strftime("%H:%M:%S") }}</time>
+        <span>{{ a.actor_name }} · {{ a.kind }}</span>
+      </li>
+      {% end %}
+    </ul>
+  </article>
   {% end %}
-</section>
+
+  <div class="actions">
+    {% if message.state == "sealed" %}
+    <form method="post" action="/wall/pin">
+      {{ csrf_field() }}
+      <input type="hidden" name="pidge_id" value="{{ message.id }}">
+      <button class="btn btn-ghost" type="submit">Pin to wall</button>
+    </form>
+    {% end %}
+    {% if is_author %}
+    <a class="btn btn-ghost" href="/compose">Send another</a>
+    {% end %}
+  </div>
+</div>
 {% end %}
