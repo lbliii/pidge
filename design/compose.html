@@ -18,18 +18,31 @@
     <div
       class="shell"
       x-data="{
-        text: 'Tell Lucy we’re meeting tonight at 7 at Nowadays',
-        step: 'dictate',
+        step: 'waiting',
+        intent: 'Tell Lucy we’re meeting tonight at 7 at Nowadays',
         ride: [
           { id: 'who', label: 'Resolve Lucy', detail: 'contact match', state: 'pending' },
           { id: 'when', label: 'Parse time', detail: 'tonight · 7:00 PM', state: 'pending' },
           { id: 'where', label: 'Find Nowadays', detail: 'place · Brooklyn', state: 'pending' },
           { id: 'menu', label: 'Fetch menu', detail: 'kitchen + wine', state: 'pending' }
         ],
-        startFly() {
-          if (this.step !== 'dictate') return;
+        slots: {
+          who: { status: 'pending', value: null },
+          when: { status: 'pending', value: null },
+          where: { status: 'pending', value: null }
+        },
+        receiveDraft() {
+          if (this.step !== 'waiting') return;
           this.step = 'flying';
           this.ride.forEach((r) => (r.state = 'pending'));
+          Object.keys(this.slots).forEach((k) => {
+            this.slots[k] = { status: 'pending', value: null };
+          });
+          const values = {
+            who: 'Lucy',
+            when: 'Tonight · 7:00 PM',
+            where: 'Nowadays, Brooklyn'
+          };
           const run = (i) => {
             if (i >= this.ride.length) {
               this.step = 'ready';
@@ -38,6 +51,10 @@
             this.ride[i].state = 'active';
             setTimeout(() => {
               this.ride[i].state = 'done';
+              const key = this.ride[i].id === 'menu' ? null : this.ride[i].id;
+              if (key && this.slots[key]) {
+                this.slots[key] = { status: 'ready', value: values[key] };
+              }
               run(i + 1);
             }, 520);
           };
@@ -47,7 +64,7 @@
     >
       <header class="topbar">
         <a class="brand" href="index.html">Pid<em>ge</em></a>
-                <nav class="nav" aria-label="Primary">
+        <nav class="nav" aria-label="Primary">
           <a href="inbox.html">Inbox</a>
           <a href="compose.html" aria-current="page">Compose</a>
           <a href="lucy.html">Lucy’s view</a>
@@ -57,31 +74,82 @@
 
       <div class="page-head">
         <div>
-          <p class="kicker">Dictate → fly → seal</p>
-          <h1>New Pidge</h1>
+          <p class="kicker">Agent inbound → fly → seal</p>
+          <h1>Compose</h1>
         </div>
       </div>
 
       <div class="steps-rail" aria-label="Compose progress">
-        <span class="step-chip" :class="step === 'dictate' ? 'is-active' : 'is-done'">1 Dictate</span>
+        <span class="step-chip" :class="step === 'waiting' ? 'is-active' : 'is-done'">1 Agent</span>
         <span class="step-chip" :class="step === 'flying' ? 'is-active' : (step === 'ready' ? 'is-done' : '')">2 Fly</span>
         <span class="step-chip" :class="step === 'ready' ? 'is-active' : ''">3 Seal</span>
       </div>
 
       <div class="thread-layout">
         <div class="compose-panel">
-          <label for="intent">To your agent</label>
-          <textarea id="intent" x-model="text" :disabled="step !== 'dictate'"></textarea>
-          <p class="hint">
-            Say it like a human. Your agent flies out for who / when / where /
-            extras — then you seal the message object.
-          </p>
+          <template x-if="step === 'waiting'">
+            <div>
+              <p class="lede" style="margin-top:0">
+                No free-type box. Your agent calls <code>draft_pidge</code> /
+                <code>enrich_pidge</code> on MCP; this desk only watches the flight
+                and seals.
+              </p>
+              <p class="hint">Demo: simulate an inbound draft from the secretary agent.</p>
+              <div class="actions" style="margin-top: 1rem">
+                <button type="button" class="btn btn-seal" @click="receiveDraft()">
+                  Simulate agent draft
+                </button>
+              </div>
+            </div>
+          </template>
 
-          <div class="flight-track" x-show="step === 'flying'" x-cloak>
-            <span></span>
-          </div>
+          <template x-if="step !== 'waiting'">
+            <div>
+              <p class="hint">Intent (from agent)</p>
+              <p><strong x-text="intent"></strong></p>
+              <p class="hint">Slots</p>
+              <ul class="slot-list">
+                <template x-for="key in ['who', 'when', 'where']" :key="key">
+                  <li class="slot-row" :class="'is-' + slots[key].status">
+                    <code x-text="key"></code>
+                    <span class="slot-status" x-text="slots[key].status"></span>
+                    <span class="mono" x-text="slots[key].value || 'waiting'"></span>
+                  </li>
+                </template>
+              </ul>
+              <p class="hint seal-blocked" x-show="step === 'flying'" x-cloak>
+                Seal blocked — waiting on who, when, where via enrich_pidge.
+              </p>
+              <p class="hint seal-ready" x-show="step === 'ready'" x-cloak>
+                Slots ready — seal to send.
+              </p>
+              <div class="actions" style="margin-top: 1rem">
+                <button type="button" class="btn btn-seal" disabled x-show="step === 'flying'" x-cloak>
+                  Seal
+                </button>
+                <a class="btn btn-seal" href="sent.html" x-show="step === 'ready'" x-cloak>
+                  Seal &amp; send to Lucy
+                </a>
+              </div>
+            </div>
+          </template>
+        </div>
 
-          <ul class="ride-log" x-show="step !== 'dictate'" x-cloak>
+        <aside class="flight-rail">
+          <h2>Flight</h2>
+          <template x-if="step === 'waiting'">
+            <p class="hint">Waiting on agent inbound…</p>
+          </template>
+          <template x-if="step === 'flying'">
+            <div>
+              <p class="hint">State: flying</p>
+              <div class="flight-track" aria-hidden="true"><span></span></div>
+            </div>
+          </template>
+          <template x-if="step === 'ready'">
+            <p class="hint">State: done</p>
+          </template>
+          <ul class="ride-log" x-show="step !== 'waiting'" x-cloak>
             <template x-for="item in ride" :key="item.id">
               <li :class="'is-' + item.state">
                 <span class="ride-dot" aria-hidden="true"></span>
@@ -90,75 +158,61 @@
               </li>
             </template>
           </ul>
-
-          <div class="actions" style="margin-top: 1rem">
-            <button
-              type="button"
-              class="btn btn-seal"
-              x-show="step === 'dictate'"
-              @click="startFly()"
-            >
-              Fly &amp; enrich
-            </button>
-            <a
-              class="btn btn-seal"
-              href="sent.html"
-              x-show="step === 'ready'"
-              x-cloak
-            >
-              Seal &amp; send to Lucy
-            </a>
-            <button
-              type="button"
-              class="btn btn-ghost"
-              x-show="step !== 'dictate'"
-              @click="step = 'dictate'; ride.forEach(r => r.state = 'pending')"
-            >
-              Edit dictate
-            </button>
-          </div>
-        </div>
-
-        <article class="bubble">
-          <header>
-            <span class="from" x-text="step === 'ready' ? 'Ready to seal' : (step === 'flying' ? 'In flight…' : 'Preview')"></span>
-            <span class="verified" x-show="step === 'ready'" x-cloak>Packed</span>
-          </header>
-          <p class="intent" x-text="'“' + text + '”'"></p>
-          <div class="cards">
-            <div class="card" :class="ride[0].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
-              <h3>Who</h3>
-              <p x-text="ride[0].state === 'done' || step === 'dictate' ? 'Lucy' : '…'"></p>
-              <p class="mono" x-text="ride[0].state === 'done' ? 'lucy@pidge.app' : 'resolving'"></p>
-            </div>
-            <div class="card" :class="ride[1].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
-              <h3>When</h3>
-              <p x-text="ride[1].state === 'done' || step === 'dictate' ? 'Tonight · 7:00 PM' : '…'"></p>
-              <p class="mono">America/New_York</p>
-            </div>
-            <div class="card map-card" :class="ride[2].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''">
-              <h3>Where</h3>
-              <div class="map-pin" aria-hidden="true"></div>
-              <p x-text="ride[2].state === 'done' || step === 'dictate' ? 'Nowadays' : '…'"></p>
-              <p class="mono" x-text="ride[2].state === 'done' ? '56 Bogart St, Brooklyn' : 'matching place'"></p>
-            </div>
-          </div>
-          <div class="card" style="margin-top: 0.75rem" :class="ride[3].state !== 'done' && step !== 'dictate' ? 'is-skel' : ''" x-show="step !== 'dictate'" x-cloak>
-            <h3>Menu</h3>
-            <p x-text="ride[3].state === 'done' ? 'Kitchen + natural wine' : 'Fetching…'"></p>
-            <p class="mono" x-text="ride[3].state === 'done' ? 'fresh · 2h cache' : 'agent in flight'"></p>
-          </div>
-        </article>
+        </aside>
       </div>
 
       <footer class="footer">
         <span>Mock · compose flow</span>
-        <span>Dictate → fly → seal</span>
+        <span>Agent inbound → fly → seal</span>
       </footer>
     </div>
     <style>
       [x-cloak] {
         display: none !important;
+      }
+      .slot-list {
+        list-style: none;
+        margin: 0.5rem 0 1rem;
+        padding: 0;
+        display: grid;
+        gap: 0.4rem;
+      }
+      .slot-row {
+        display: grid;
+        grid-template-columns: 4.5rem 4.5rem 1fr;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.45rem 0.65rem;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: color-mix(in oklab, var(--paper) 70%, white);
+        font-size: 0.92rem;
+      }
+      .slot-row.is-pending { opacity: 0.65; }
+      .slot-row.is-ready {
+        border-color: color-mix(in oklab, var(--stable) 30%, transparent);
+      }
+      .slot-status {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--mist);
+      }
+      .slot-row.is-ready .slot-status { color: var(--stable); }
+      .seal-ready { color: var(--stable); }
+      .seal-blocked { color: #8b3a2a; }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .flight-rail h2 {
+        font-family: var(--font-display);
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 0 0 0.5rem;
       }
     </style>
   </body>

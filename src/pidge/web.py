@@ -137,7 +137,9 @@ def create_app(
     # --- MCP tools (agent write path) --------------------------------------
 
     @app.tool("draft_pidge", description="Create a draft Pidge from intent and recipients.")
-    def draft_pidge(intent: str, recipients: list[str], summary: str = "") -> dict[str, Any]:
+    def draft_pidge(
+        intent: str, recipients: list[str] | str, summary: str = ""
+    ) -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
         msg = service.draft_pidge(owner, intent=intent, recipient_names=recipients, summary=summary)
         return {"id": msg.id, "state": msg.state, "summary": msg.summary, "intent": msg.intent}
@@ -380,18 +382,7 @@ def create_app(
             msg = service.get_pidge_for(user, draft_id)
         except (LookupError, PermissionError):
             return Response("Not found", status=404)
-        flight = service.store.get_flight_for_pidge(msg.id)
-        steps = service.store.list_flight_steps(flight.id) if flight else ()
-        return render(
-            request,
-            "compose.html",
-            message=msg,
-            recipients=service.store.recipients_for(msg.id),
-            flight=flight,
-            steps=steps,
-            can_seal=_can_seal(msg),
-            error=None,
-        )
+        return render(request, "compose.html", **_compose_context(service, msg))
 
     @app.route("/compose/{draft_id:int}/seal", methods=["POST"], referenced=True)
     async def seal_draft(request: Request, draft_id: int):
@@ -402,17 +393,10 @@ def create_app(
             sealed = service.seal_pidge(user, draft_id)
         except (PermissionError, ValueError, LookupError) as exc:
             msg = service.store.get_pidge(draft_id)
-            flight = service.store.get_flight_for_pidge(msg.id)
-            steps = service.store.list_flight_steps(flight.id) if flight else ()
             return render(
                 request,
                 "compose.html",
-                message=msg,
-                recipients=service.store.recipients_for(msg.id),
-                flight=flight,
-                steps=steps,
-                can_seal=_can_seal(msg),
-                error=str(exc),
+                **_compose_context(service, msg, error=str(exc)),
             )
         return Redirect(f"/p/{sealed.id}")
 
@@ -421,27 +405,20 @@ def create_app(
         user = _gate(request, require_human)
         if isinstance(user, Response):
             return user
+        try:
+            service.get_pidge_for(user, draft_id)
+        except (LookupError, PermissionError):
+            return Response("Not found", status=404)
 
         async def generate():
-            # Replay current steps, then listen for tool activity as a nudge to refresh.
-            flight = service.store.get_flight_for_pidge(draft_id)
-            if flight:
-                yield Fragment(
-                    "compose.html",
-                    "flight_rail",
-                    steps=service.store.list_flight_steps(flight.id),
-                    flight=flight,
-                )
-            async for _event in app.tool_events.subscribe():
-                flight = service.store.get_flight_for_pidge(draft_id)
-                if flight is None:
+            # Replay current rail + seal panel, then refresh when this draft's tools run.
+            for fragment in _compose_live_fragments(service, draft_id):
+                yield fragment
+            async for event in app.tool_events.subscribe():
+                if not _tool_event_touches_draft(event, draft_id):
                     continue
-                yield Fragment(
-                    "compose.html",
-                    "flight_rail",
-                    steps=service.store.list_flight_steps(flight.id),
-                    flight=flight,
-                )
+                for fragment in _compose_live_fragments(service, draft_id):
+                    yield fragment
 
         return EventStream(generate())
 
@@ -635,12 +612,71 @@ def create_app(
 
 
 def _can_seal(msg: Any) -> bool:
+    return _seal_block_reason(msg) is None and getattr(msg, "state", None) == "draft"
+
+
+def _seal_block_reason(msg: Any) -> str | None:
+    if getattr(msg, "state", None) != "draft":
+        return None
     slots = getattr(msg, "slots", {}) or {}
-    for key in ("who", "when", "where"):
-        slot = slots.get(key)
-        if not isinstance(slot, dict) or slot.get("status") not in {"ready", "none"}:
+    missing = [
+        key
+        for key in ("who", "when", "where")
+        if not isinstance(slots.get(key), dict)
+        or slots[key].get("status") not in {"ready", "none"}
+    ]
+    if not missing:
+        return None
+    return f"Seal blocked — waiting on {', '.join(missing)} via enrich_pidge."
+
+
+def _compose_context(service: PidgeService, msg: Any, *, error: str | None = None) -> dict[str, Any]:
+    flight = service.store.get_flight_for_pidge(msg.id)
+    steps = service.store.list_flight_steps(flight.id) if flight else ()
+    return {
+        "message": msg,
+        "recipients": service.store.recipients_for(msg.id),
+        "flight": flight,
+        "steps": steps,
+        "can_seal": _can_seal(msg),
+        "seal_block_reason": _seal_block_reason(msg),
+        "error": error,
+    }
+
+
+def _compose_live_fragments(service: PidgeService, draft_id: int) -> list[Fragment]:
+    try:
+        msg = service.store.get_pidge(draft_id)
+    except LookupError:
+        return []
+    ctx = _compose_context(service, msg)
+    return [
+        Fragment("compose.html", "flight_rail", target="flight_rail", **ctx),
+        Fragment("compose.html", "compose_live", target="compose_live", **ctx),
+    ]
+
+
+def _tool_event_touches_draft(event: Any, draft_id: int) -> bool:
+    """Return True when a tool_events payload likely changed this draft."""
+    name = getattr(event, "tool_name", "") or ""
+    args = getattr(event, "arguments", None) or {}
+    result = getattr(event, "result", None)
+    if name == "enrich_pidge":
+        try:
+            return int(args.get("pidge_id", -1)) == draft_id
+        except (TypeError, ValueError):
             return False
-    return getattr(msg, "state", None) == "draft"
+    if name == "draft_pidge" and isinstance(result, dict):
+        try:
+            return int(result.get("id", -1)) == draft_id
+        except (TypeError, ValueError):
+            return False
+    if isinstance(result, dict):
+        try:
+            return int(result.get("id", -1)) == draft_id
+        except (TypeError, ValueError):
+            return False
+    return False
 
 
 def _gate(request: Request, require_human: Any) -> User | Response:

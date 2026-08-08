@@ -4,7 +4,7 @@ HTML/CSS prototypes for the secretary desk. Not the production app.
 
 ## Demo flow
 
-1. [compose.html](./compose.html) — agent flight → enrich → seal  
+1. [compose.html](./compose.html) — agent inbound → flight → seal  
 2. [sent.html](./sent.html) — delivery confirmation  
 3. [lucy.html](./lucy.html) — recipient verifies + RSVP  
 4. [thread.html](./thread.html) — settled thread  
@@ -18,4 +18,7 @@ python -m http.server 8766
 
 **Vibe:** oat / leather / bay · Barlow Semi Condensed + Source Sans 3.
 
-**Note:** Compose still shows a dictate textarea for the story beat. Product constraint is **no UI authoring** — next mock pass should make this agent-inbound only (see [saga #1](https://github.com/lbliii/pidge/issues/1)).
+**Compose constraint:** No free-type authoring box. Compose is **agent-inbound
+only** — the mock shows waiting / flight / seal. Humans seal; agents draft and
+enrich via MCP (`draft_pidge`, `enrich_pidge`). See [saga #1](https://github.com/lbliii/pidge/issues/1)
+and [epic #3](https://github.com/lbliii/pidge/issues/3).
