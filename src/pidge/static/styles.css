@@ -300,6 +300,14 @@ a:hover {
   gap: 1rem;
 }
 
+.pillars-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.hero .kicker {
+  margin-bottom: 0.75rem;
+}
+
 .pillars article {
   background: color-mix(in oklab, var(--card) 70%, transparent);
   border-radius: var(--radius);
@@ -311,6 +319,13 @@ a:hover {
   font-family: var(--font-display);
   margin: 0 0 0.35rem;
   font-size: 1.1rem;
+}
+
+.compose-panel > h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.5vw, 1.7rem);
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
 }
 
 .pillars p {
@@ -599,6 +614,7 @@ a:hover {
 
 @media (max-width: 820px) {
   .pillars,
+  .pillars-4,
   .cards {
     grid-template-columns: 1fr;
   }

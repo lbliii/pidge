@@ -1,46 +1,57 @@
 {% extends "layout.html" %}
 {% block title %}Desk — {{ loft_name }}{% end %}
 {% block page_content %}
-<div class="page-head">
-  <div>
-    <p class="kicker">{{ loft_name }}</p>
-    <h1>Good day, {{ viewer.display_name }}.</h1>
+<section class="hero">
+  <div class="floating-seal" aria-hidden="true"></div>
+  <p class="kicker">{{ loft_name }}</p>
+  <h1>Mail that <span>means</span> something.</h1>
+  <p class="hero-lead">
+    Good day, {{ viewer.display_name }}. Your agent drafts. You seal.
+    No typing required at the desk.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-seal" href="/compose">Open compose</a>
+    <a class="btn btn-ghost" href="/inbox">Inbox</a>
+    <a class="btn btn-ghost" href="/settings/agents">Agents</a>
   </div>
-  <a class="btn btn-seal" href="/compose">Open compose</a>
-</div>
-<p class="lede">Your agent drafts. You seal. No typing required at the desk.</p>
-<div class="pillars">
-  <article>
-    <h2>Drafts</h2>
-    {% if drafts %}
-      <ul>{% for m in drafts %}<li><a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a></li>{% end %}</ul>
-    {% else %}
-      <p class="hint">No drafts. Point an agent with a scoped token at <code>/mcp</code>.</p>
-    {% end %}
-  </article>
-  <article>
-    <h2>Inbox</h2>
-    {% if inbox %}
-      <ul>{% for m in inbox %}<li><a href="/p/{{ m.id }}">{{ m.summary }}</a> · {{ m.author_name }}</li>{% end %}</ul>
-    {% else %}
-      <p class="hint">Nothing sealed for you yet.</p>
-    {% end %}
-  </article>
-  <article>
-    <h2>Calendar</h2>
-    {% if holds %}
-      <ul>{% for h in holds %}<li>{{ h.title }}{% if h.starts_at %} · {{ h.starts_at }}{% end %}</li>{% end %}</ul>
-    {% else %}
-      <p class="hint">No holds yet.</p>
-    {% end %}
-  </article>
-  <article>
-    <h2>Wall</h2>
-    {% if pins %}
-      <ul>{% for p in pins %}<li><a href="/p/{{ p.pidge_id }}">{{ p.title }}</a></li>{% end %}</ul>
-    {% else %}
-      <p class="hint">Pin sealed Pidges from a thread.</p>
-    {% end %}
-  </article>
-</div>
+</section>
+
+<section class="section">
+  <h2>On your desk</h2>
+  <p class="lede">Drafts wait for seal. Inbox, calendar, and wall stay below the fold.</p>
+  <div class="pillars pillars-4">
+    <article>
+      <h3>Drafts</h3>
+      {% if drafts %}
+        <ul>{% for m in drafts %}<li><a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a></li>{% end %}</ul>
+      {% else %}
+        <p class="hint">No drafts. Point an agent with a scoped token at <code>/mcp</code>.</p>
+      {% end %}
+    </article>
+    <article>
+      <h3>Inbox</h3>
+      {% if inbox %}
+        <ul>{% for m in inbox %}<li><a href="/p/{{ m.id }}">{{ m.summary }}</a> · {{ m.author_name }}</li>{% end %}</ul>
+      {% else %}
+        <p class="hint">Nothing sealed for you yet.</p>
+      {% end %}
+    </article>
+    <article>
+      <h3>Calendar</h3>
+      {% if holds %}
+        <ul>{% for h in holds %}<li>{{ h.title }}{% if h.starts_at %} · {{ h.starts_at }}{% end %}</li>{% end %}</ul>
+      {% else %}
+        <p class="hint">No holds yet.</p>
+      {% end %}
+    </article>
+    <article>
+      <h3>Wall</h3>
+      {% if pins %}
+        <ul>{% for p in pins %}<li><a href="/p/{{ p.pidge_id }}">{{ p.title }}</a></li>{% end %}</ul>
+      {% else %}
+        <p class="hint">Pin sealed Pidges from a thread.</p>
+      {% end %}
+    </article>
+  </div>
+</section>
 {% end %}

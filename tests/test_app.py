@@ -90,6 +90,28 @@ async def test_setup_login_desk(app) -> None:
         assert desk.status == 200
         assert "Good day" in desk.text
         assert "Owner" in desk.text
+        assert 'class="hero"' in desk.text
+        assert "floating-seal" in desk.text
+        assert "Mail that" in desk.text
+        assert 'href="/compose"' in desk.text
+        assert 'href="/inbox"' in desk.text
+        assert 'href="/settings/agents"' in desk.text
+        assert 'class="dictate"' not in desk.text
+        assert "<textarea" not in desk.text
+
+
+async def test_compose_empty_agent_inbound(app) -> None:
+    async with TestClient(app) as client:
+        cookies = await _setup_owner(client)
+        page = await client.get("/compose", headers={"Cookie": cookies})
+        assert page.status == 200
+        assert "Waiting on your agent" in page.text
+        assert "draft_pidge" in page.text
+        assert "enrich_pidge" in page.text
+        assert 'href="/settings/agents"' in page.text
+        assert "Agent inbound" in page.text
+        assert "<textarea" not in page.text
+        assert "compose-box" not in page.text
 
 
 async def test_register_second_user_and_directory(app, service: PidgeService) -> None:

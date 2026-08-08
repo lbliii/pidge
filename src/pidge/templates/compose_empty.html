@@ -3,12 +3,44 @@
 {% block page_content %}
 <div class="page-head">
   <div>
-    <p class="kicker">Agent inbound</p>
+    <p class="kicker">Agent inbound → fly → seal</p>
     <h1>Waiting on your agent</h1>
   </div>
+  <a class="btn btn-seal" href="/settings/agents">Mint an agent token</a>
 </div>
-<p class="lede">
-  There is no compose box. Mint an agent token under
-  <a href="/settings/agents">Agents</a>, then call <code>draft_pidge</code> on <code>/mcp</code>.
-</p>
+
+<div class="steps-rail" aria-label="Compose progress">
+  <span class="step-chip is-active">1 Agent</span>
+  <span class="step-chip">2 Fly</span>
+  <span class="step-chip">3 Seal</span>
+</div>
+
+<div class="compose-panel">
+  <p class="lede" style="margin-top:0">
+    There is no compose box. Agents write intents via MCP; this desk only
+    watches the flight and seals.
+  </p>
+  <h2>Path from agent to seal</h2>
+  <div class="pillars">
+    <article>
+      <h3>1. Mint</h3>
+      <p>Create a scoped token under <a href="/settings/agents">Agents</a>.</p>
+    </article>
+    <article>
+      <h3>2. Draft &amp; enrich</h3>
+      <p>
+        Call <code>draft_pidge</code>, then <code>enrich_pidge</code> on
+        <code>/mcp</code>.
+      </p>
+    </article>
+    <article>
+      <h3>3. Seal</h3>
+      <p>When slots are ready, you seal here. Agents cannot seal.</p>
+    </article>
+  </div>
+  <div class="actions">
+    <a class="btn btn-seal" href="/settings/agents">Open Agents</a>
+    <a class="btn btn-ghost" href="/">Back to desk</a>
+  </div>
+</div>
 {% end %}
