@@ -1582,3 +1582,237 @@ a.object-row:hover {
     animation: none !important;
   }
 }
+
+/* --- Letter stamps album (#77) --- */
+
+.stamp-album {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--leather) 8%, var(--card)) 0%,
+      var(--card) 40%,
+      color-mix(in oklab, var(--flax) 10%, var(--card)) 100%
+    );
+  border: 1px solid color-mix(in oklab, var(--leather) 18%, transparent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  box-shadow:
+    var(--shadow-2),
+    inset 0 1px 0 color-mix(in oklab, var(--flax) 35%, transparent);
+}
+
+.stamp-album-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dashed color-mix(in oklab, var(--leather) 20%, transparent);
+}
+
+.stamp-album-head h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.stamp-album-head .mono {
+  color: var(--mist);
+  font-size: var(--text-sm);
+}
+
+.stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-5) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stamp-cell {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  text-align: center;
+}
+
+.stamp-cell .caption {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.stamp-cell .caption strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* Perforated gummed rectangle */
+.stamp {
+  --stamp-w: 8.4rem;
+  --stamp-h: 10.2rem;
+  --perf: 5px;
+  --stamp-face: var(--card-raised);
+  position: relative;
+  width: var(--stamp-w);
+  height: var(--stamp-h);
+  padding: 0.55rem 0.45rem 0.65rem;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.2rem;
+  color: var(--ink);
+  background-color: var(--stamp-face);
+  /* scalloped perforation — transparent holes show the album behind */
+  background-image: radial-gradient(
+    circle,
+    transparent var(--perf),
+    var(--stamp-face) calc(var(--perf) + 0.5px)
+  );
+  background-size: 11px 11px;
+  background-position: -5.5px -5.5px;
+  background-repeat: repeat;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--leather) 10%, transparent),
+    2px 4px 14px color-mix(in oklab, var(--leather) 16%, transparent);
+  filter: drop-shadow(0 1px 0 color-mix(in oklab, var(--flax) 40%, transparent));
+}
+
+.stamp::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid color-mix(in oklab, var(--leather) 22%, transparent);
+  pointer-events: none;
+}
+
+.stamp-type {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mist);
+  text-align: center;
+}
+
+.stamp-art {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0.15rem;
+}
+
+.stamp-art svg {
+  width: 4.6rem;
+  height: 4.6rem;
+  display: block;
+}
+
+.stamp-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.stamp-denom {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-align: center;
+  color: var(--leather);
+  margin: 0;
+}
+
+.stamp.is-definitive {
+  --stamp-face: color-mix(in oklab, var(--bay) 8%, var(--card-raised));
+}
+
+.stamp.is-pictorial {
+  --stamp-face: color-mix(in oklab, var(--flax) 14%, var(--card-raised));
+}
+
+.stamp.is-person {
+  --stamp-face: color-mix(in oklab, var(--stable) 10%, var(--card-raised));
+}
+
+.stamp.is-special {
+  --stamp-face: color-mix(in oklab, var(--leather) 8%, var(--card-raised));
+}
+
+.stamp.is-special .stamp-type {
+  color: var(--leather);
+}
+
+/* Cancellation (postmark) — specimen only; not an album tile */
+.cancellation {
+  display: inline-grid;
+  gap: 0.15rem;
+  justify-items: center;
+  padding: 0.65rem 1rem;
+  border: 2.5px solid color-mix(in oklab, var(--ink) 55%, transparent);
+  border-radius: 50%;
+  width: 7.5rem;
+  height: 7.5rem;
+  place-content: center;
+  transform: rotate(-8deg);
+  color: color-mix(in oklab, var(--ink) 70%, transparent);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.cancellation strong {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+}
+
+.cancellation-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+.cancellation-pair .stamp {
+  flex-shrink: 0;
+}
+
+.specimen-panel {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+}
+
+.specimen-panel h3 {
+  font-family: var(--font-display);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-base);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+@media (max-width: 640px) {
+  .stamp-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

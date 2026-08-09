@@ -223,5 +223,6 @@ Resolve in mock review; update this doc when locked.
 Someone opens the album once and remembers Pidge as “the mail app with the
 little stamps” — without the desk feeling like a game.
 
-Next: [#77](https://github.com/lbliii/pidge/issues/77) album mock ·
-[#78](https://github.com/lbliii/pidge/issues/78) affix on sealed packets.
+Next: [#77](https://github.com/lbliii/pidge/issues/77) album mock (done ·
+`stamps.html`) · [#78](https://github.com/lbliii/pidge/issues/78) affix on
+sealed packets.
