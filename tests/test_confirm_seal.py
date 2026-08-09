@@ -13,6 +13,7 @@ from pidge.config import CONFIRM_SCOPES, DESK_SCOPES, TOKEN_PRESETS, infer_prese
 from pidge.services import PidgeService
 from pidge.store import MemoryStore, token_hash
 from pidge.web import SESSION_COOKIE, create_app
+from tests.helpers import connect_loft_mates
 
 
 @pytest.fixture
@@ -77,6 +78,7 @@ def _setup_loft(service: PidgeService):
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     return owner, lucy
 
 

@@ -12,6 +12,7 @@ from pidge.config import PidgeConfig
 from pidge.services import PidgeService
 from pidge.store import MemoryStore
 from pidge.web import SESSION_COOKIE, create_app
+from tests.helpers import connect_loft_mates
 
 pytestmark = pytest.mark.asyncio
 
@@ -119,6 +120,8 @@ async def test_desk_blotter_ready_to_seal_and_needs_act(app, service: PidgeServi
         )
 
     owner = service.store.get_user_by_username("owner")
+    lucy = service.store.get_user_by_username("lucy")
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(
         owner,
         intent="Tonight at Nowadays with Lucy",
@@ -217,6 +220,8 @@ async def test_mail_stance_badges_and_delivery_ceremony(app, service: PidgeServi
         )
 
     owner = service.store.get_user_by_username("owner")
+    lucy = service.store.get_user_by_username("lucy")
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(
         owner, intent="Tonight at Nowadays", recipient_names=["Lucy"]
     )
@@ -415,6 +420,7 @@ async def test_mail_seal_inbox_act_calendar_wall(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
 
     draft = service.draft_pidge(
         owner,
@@ -478,6 +484,8 @@ async def test_agent_token_mcp_tools(app, service: PidgeService) -> None:
         password="password-long",
     ).user
     service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.store.get_user_by_username("lucy")
+    connect_loft_mates(service, owner, lucy)
     minted = service.mint_agent_token(owner, label="Secretary")
 
     async with TestClient(app) as client:
@@ -538,7 +546,8 @@ async def test_cannot_seal_without_slots(service: PidgeService) -> None:
         display_name="Owner",
         password="password-long",
     ).user
-    service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.register(username="lucy", display_name="Lucy", password="password-long").user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="soon", recipient_names=["Lucy"])
     with pytest.raises(ValueError, match="Slot"):
         service.seal_pidge(owner, draft.id)
@@ -555,6 +564,7 @@ async def test_author_can_discard_draft(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="scratch idea", recipient_names=["Lucy"])
     discarded = service.discard_pidge(owner, draft.id)
     assert discarded.state == "revoked"
@@ -574,6 +584,7 @@ async def test_non_author_cannot_discard_draft(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="private draft", recipient_names=["Lucy"])
     with pytest.raises(PermissionError, match="author"):
         service.discard_pidge(lucy, draft.id)
@@ -589,7 +600,8 @@ async def test_cannot_discard_sealed_pidge(service: PidgeService) -> None:
         display_name="Owner",
         password="password-long",
     ).user
-    service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.register(username="lucy", display_name="Lucy", password="password-long").user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="meet", recipient_names=["Lucy"])
     service.enrich_pidge(
         owner,
@@ -612,7 +624,8 @@ async def test_discard_draft_via_compose_and_mcp(app, service: PidgeService) -> 
         display_name="Owner",
         password="password-long",
     ).user
-    service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.register(username="lucy", display_name="Lucy", password="password-long").user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="throw away", recipient_names=["Lucy"])
     other = service.draft_pidge(owner, intent="keep for mcp", recipient_names=["Lucy"])
     minted = service.mint_agent_token(owner, label="Secretary")
@@ -711,6 +724,7 @@ async def test_author_can_revoke_sealed_pidge(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     sealed = _seal_ready(service, owner, intent="cancel later")
     digest = sealed.content_hash
     assert digest
@@ -738,6 +752,7 @@ async def test_non_author_cannot_revoke_sealed(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     sealed = _seal_ready(service, owner)
     with pytest.raises(PermissionError, match="author"):
         service.revoke_sealed_pidge(lucy, sealed.id)
@@ -752,7 +767,8 @@ async def test_cannot_revoke_draft_via_sealed_path(service: PidgeService) -> Non
         display_name="Owner",
         password="password-long",
     ).user
-    service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.register(username="lucy", display_name="Lucy", password="password-long").user
+    connect_loft_mates(service, owner, lucy)
     draft = service.draft_pidge(owner, intent="not sealed", recipient_names=["Lucy"])
     with pytest.raises(PermissionError, match="sealed"):
         service.revoke_sealed_pidge(owner, draft.id)
@@ -770,6 +786,7 @@ async def test_supersede_creates_linked_draft(service: PidgeService) -> None:
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     sealed = _seal_ready(service, owner, intent="original plan")
     digest = sealed.content_hash
     draft = service.supersede_pidge(owner, sealed.id)
@@ -799,7 +816,8 @@ async def test_agents_cannot_revoke_or_supersede_via_mcp(
         display_name="Owner",
         password="password-long",
     ).user
-    service.register(username="lucy", display_name="Lucy", password="password-long")
+    lucy = service.register(username="lucy", display_name="Lucy", password="password-long").user
+    connect_loft_mates(service, owner, lucy)
     sealed = _seal_ready(service, owner)
     minted = service.mint_agent_token(owner, label="Secretary")
 
@@ -846,6 +864,7 @@ async def test_revoke_and_supersede_via_thread_ui(app, service: PidgeService) ->
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     sealed = _seal_ready(service, owner, intent="ui revoke")
     other = _seal_ready(service, owner, intent="ui supersede")
     digest = sealed.content_hash

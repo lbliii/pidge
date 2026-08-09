@@ -266,9 +266,13 @@ class Store(Protocol):
     def get_contact(self, contact_id: int) -> Contact: ...
     def add_contact(self, contact: Contact) -> Contact: ...
     def update_contact_status(self, contact_id: int, status: str) -> Contact: ...
+    def delete_contact(self, contact_id: int) -> None: ...
     def create_connection_request(self, req: ConnectionRequest) -> ConnectionRequest: ...
     def list_connection_requests(self, user_id: int) -> tuple[ConnectionRequest, ...]: ...
     def accept_connection_request(self, request_id: int, user_id: int) -> Contact: ...
+    def decline_connection_request(self, request_id: int, user_id: int) -> None: ...
+    def block_loft_connection(self, viewer_id: int, target_id: int) -> Contact: ...
+    def block_from_connection_request(self, request_id: int, user_id: int) -> Contact: ...
     def create_pidge(self, msg: PidgeMessage, recipients: list[PidgeRecipient]) -> PidgeMessage: ...
     def update_pidge_slots(
         self, pidge_id: int, *, summary: str, slots: dict[str, Any], intent: str | None = None
@@ -612,6 +616,12 @@ class MemoryStore:
             self._contacts[contact_id] = updated
             return updated
 
+    def delete_contact(self, contact_id: int) -> None:
+        with self._lock:
+            if contact_id not in self._contacts:
+                raise LookupError(contact_id)
+            del self._contacts[contact_id]
+
     def create_connection_request(self, req: ConnectionRequest) -> ConnectionRequest:
         with self._lock:
             request_id = self._next("request")
@@ -652,27 +662,120 @@ class MemoryStore:
             other = self._users[req.from_user_id]
             me = self._users[user_id]
             # Mutual loft contacts
-            a = self.add_contact(
-                Contact(
-                    id=0,
-                    owner_user_id=user_id,
-                    kind="loft_user",
-                    status="accepted",
-                    display_name=other.display_name,
-                    loft_user_id=other.id,
-                )
+            a = self._upsert_loft_contact(
+                owner_user_id=user_id,
+                loft_user_id=other.id,
+                display_name=other.display_name,
+                status="accepted",
             )
-            self.add_contact(
-                Contact(
-                    id=0,
-                    owner_user_id=other.id,
-                    kind="loft_user",
-                    status="accepted",
-                    display_name=me.display_name,
-                    loft_user_id=me.id,
-                )
+            self._upsert_loft_contact(
+                owner_user_id=other.id,
+                loft_user_id=me.id,
+                display_name=me.display_name,
+                status="accepted",
             )
             return a
+
+    def decline_connection_request(self, request_id: int, user_id: int) -> None:
+        with self._lock:
+            req = self._requests.get(request_id)
+            if req is None:
+                raise LookupError(request_id)
+            if req.to_user_id != user_id or req.status != "pending":
+                raise PermissionError("Cannot decline this connection request.")
+            self._requests[request_id] = ConnectionRequest(
+                id=req.id,
+                from_user_id=req.from_user_id,
+                to_user_id=req.to_user_id,
+                external_handle=req.external_handle,
+                status="declined",
+                claim_token_hash=req.claim_token_hash,
+                created_at=req.created_at,
+            )
+
+    def block_from_connection_request(self, request_id: int, user_id: int) -> Contact:
+        with self._lock:
+            req = self._requests.get(request_id)
+            if req is None:
+                raise LookupError(request_id)
+            if req.to_user_id != user_id or req.status != "pending":
+                raise PermissionError("Cannot block via this introduction.")
+            target_id = req.from_user_id
+        return self.block_loft_connection(user_id, target_id)
+
+    def block_loft_connection(self, viewer_id: int, target_id: int) -> Contact:
+        with self._lock:
+            if viewer_id == target_id:
+                raise ValueError("You cannot block yourself.")
+            if target_id not in self._users:
+                raise LookupError(target_id)
+            target = self._users[target_id]
+            # Terminalize pending intros either direction.
+            for req_id, req in list(self._requests.items()):
+                if req.status != "pending" or req.to_user_id is None:
+                    continue
+                pair = {req.from_user_id, req.to_user_id}
+                if pair == {viewer_id, target_id}:
+                    self._requests[req_id] = ConnectionRequest(
+                        id=req.id,
+                        from_user_id=req.from_user_id,
+                        to_user_id=req.to_user_id,
+                        external_handle=req.external_handle,
+                        status="declined",
+                        claim_token_hash=req.claim_token_hash,
+                        created_at=req.created_at,
+                    )
+            # Drop the other party's delivery edge so they cannot mail the blocker.
+            for contact in list(self._contacts.values()):
+                if (
+                    contact.owner_user_id == target_id
+                    and contact.kind == "loft_user"
+                    and contact.loft_user_id == viewer_id
+                ):
+                    del self._contacts[contact.id]
+            return self._upsert_loft_contact(
+                owner_user_id=viewer_id,
+                loft_user_id=target_id,
+                display_name=target.display_name,
+                status="blocked",
+            )
+
+    def _upsert_loft_contact(
+        self,
+        *,
+        owner_user_id: int,
+        loft_user_id: int,
+        display_name: str,
+        status: str,
+    ) -> Contact:
+        for contact in self._contacts.values():
+            if (
+                contact.owner_user_id == owner_user_id
+                and contact.kind == "loft_user"
+                and contact.loft_user_id == loft_user_id
+            ):
+                updated = Contact(
+                    id=contact.id,
+                    owner_user_id=contact.owner_user_id,
+                    kind="loft_user",
+                    status=status,
+                    display_name=display_name,
+                    loft_user_id=loft_user_id,
+                    external_handle=None,
+                    created_at=contact.created_at,
+                )
+                self._contacts[contact.id] = updated
+                return updated
+        return self.add_contact(
+            Contact(
+                id=0,
+                owner_user_id=owner_user_id,
+                kind="loft_user",
+                status=status,
+                display_name=display_name,
+                loft_user_id=loft_user_id,
+            )
+        )
 
     def create_pidge(self, msg: PidgeMessage, recipients: list[PidgeRecipient]) -> PidgeMessage:
         with self._lock:
@@ -1523,6 +1626,16 @@ class PostgresStore:
             raise LookupError(contact_id)
         return Contact(*row)
 
+    def delete_contact(self, contact_id: int) -> None:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "DELETE FROM contacts WHERE id = %s RETURNING id",
+                (contact_id,),
+            ).fetchone()
+            conn.commit()
+        if row is None:
+            raise LookupError(contact_id)
+
     def create_connection_request(self, req: ConnectionRequest) -> ConnectionRequest:
         with self._pool.connection() as conn:
             row = conn.execute(
@@ -1573,28 +1686,119 @@ class PostgresStore:
             )
             other = self.get_user(req.from_user_id)
             me = self.get_user(user_id)
-            contact = self.add_contact(
-                Contact(
-                    id=0,
-                    owner_user_id=user_id,
-                    kind="loft_user",
-                    status="accepted",
-                    display_name=other.display_name,
-                    loft_user_id=other.id,
-                )
+            contact = self._upsert_loft_contact(
+                conn,
+                owner_user_id=user_id,
+                loft_user_id=other.id,
+                display_name=other.display_name,
+                status="accepted",
             )
-            self.add_contact(
-                Contact(
-                    id=0,
-                    owner_user_id=other.id,
-                    kind="loft_user",
-                    status="accepted",
-                    display_name=me.display_name,
-                    loft_user_id=me.id,
-                )
+            self._upsert_loft_contact(
+                conn,
+                owner_user_id=other.id,
+                loft_user_id=me.id,
+                display_name=me.display_name,
+                status="accepted",
             )
             conn.commit()
             return contact
+
+    def decline_connection_request(self, request_id: int, user_id: int) -> None:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, from_user_id, to_user_id, external_handle, status,
+                       claim_token_hash, created_at
+                FROM connection_requests WHERE id = %s FOR UPDATE
+                """,
+                (request_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError(request_id)
+            req = ConnectionRequest(*row)
+            if req.to_user_id != user_id or req.status != "pending":
+                raise PermissionError("Cannot decline this connection request.")
+            conn.execute(
+                "UPDATE connection_requests SET status = 'declined' WHERE id = %s",
+                (request_id,),
+            )
+            conn.commit()
+
+    def block_from_connection_request(self, request_id: int, user_id: int) -> Contact:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT id, from_user_id, to_user_id, external_handle, status,
+                       claim_token_hash, created_at
+                FROM connection_requests WHERE id = %s
+                """,
+                (request_id,),
+            ).fetchone()
+            if row is None:
+                raise LookupError(request_id)
+            req = ConnectionRequest(*row)
+            if req.to_user_id != user_id or req.status != "pending":
+                raise PermissionError("Cannot block via this introduction.")
+            target_id = req.from_user_id
+        return self.block_loft_connection(user_id, target_id)
+
+    def block_loft_connection(self, viewer_id: int, target_id: int) -> Contact:
+        if viewer_id == target_id:
+            raise ValueError("You cannot block yourself.")
+        target = self.get_user(target_id)
+        with self._pool.connection() as conn:
+            conn.execute(
+                """
+                UPDATE connection_requests
+                SET status = 'declined'
+                WHERE status = 'pending'
+                  AND to_user_id IS NOT NULL
+                  AND (
+                    (from_user_id = %s AND to_user_id = %s)
+                    OR (from_user_id = %s AND to_user_id = %s)
+                  )
+                """,
+                (viewer_id, target_id, target_id, viewer_id),
+            )
+            conn.execute(
+                """
+                DELETE FROM contacts
+                WHERE owner_user_id = %s AND kind = 'loft_user' AND loft_user_id = %s
+                """,
+                (target_id, viewer_id),
+            )
+            contact = self._upsert_loft_contact(
+                conn,
+                owner_user_id=viewer_id,
+                loft_user_id=target_id,
+                display_name=target.display_name,
+                status="blocked",
+            )
+            conn.commit()
+            return contact
+
+    def _upsert_loft_contact(
+        self,
+        conn: Any,
+        *,
+        owner_user_id: int,
+        loft_user_id: int,
+        display_name: str,
+        status: str,
+    ) -> Contact:
+        row = conn.execute(
+            """
+            INSERT INTO contacts
+                (owner_user_id, kind, status, display_name, loft_user_id, external_handle)
+            VALUES (%s, 'loft_user', %s, %s, %s, NULL)
+            ON CONFLICT (owner_user_id, loft_user_id)
+            DO UPDATE SET status = EXCLUDED.status, display_name = EXCLUDED.display_name
+            RETURNING id, owner_user_id, kind, status, display_name, loft_user_id,
+                      external_handle, created_at
+            """,
+            (owner_user_id, status, display_name, loft_user_id),
+        ).fetchone()
+        return Contact(*row)
 
     def create_pidge(self, msg: PidgeMessage, recipients: list[PidgeRecipient]) -> PidgeMessage:
         with self._pool.connection() as conn:

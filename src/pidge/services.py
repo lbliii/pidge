@@ -282,6 +282,19 @@ class PidgeService:
         target = self.store.get_user_by_username(username.strip().casefold())
         if target.id == viewer.id:
             raise ValueError("You are already in the loft.")
+        if self._loft_block_between(viewer.id, target.id):
+            raise PermissionError("Cannot introduce — this connection is blocked.")
+        if self._loft_contact(viewer.id, target.id, status="accepted") is not None:
+            raise ValueError(f"Already connected with {target.display_name}.")
+        for req in self.store.list_connection_requests(viewer.id):
+            if req.status != "pending" or req.to_user_id is None:
+                continue
+            if req.from_user_id == viewer.id and req.to_user_id == target.id:
+                raise ValueError(f"Introduction to {target.display_name} already sent.")
+            if req.from_user_id == target.id and req.to_user_id == viewer.id:
+                raise ValueError(
+                    f"{target.display_name} already introduced you — accept on People."
+                )
         return self.store.create_connection_request(
             ConnectionRequest(
                 id=0,
@@ -297,16 +310,37 @@ class PidgeService:
     def accept_connection(self, viewer: User, request_id: int) -> Contact:
         return self.store.accept_connection_request(request_id, viewer.id)
 
+    def decline_connection(self, viewer: User, request_id: int) -> None:
+        self.store.decline_connection_request(request_id, viewer.id)
+
+    def block_loft_user(self, viewer: User, *, username: str) -> Contact:
+        target = self.store.get_user_by_username(username.strip().casefold())
+        if target.id == viewer.id:
+            raise ValueError("You cannot block yourself.")
+        return self.store.block_loft_connection(viewer.id, target.id)
+
+    def block_connection_request(self, viewer: User, request_id: int) -> Contact:
+        return self.store.block_from_connection_request(request_id, viewer.id)
+
+    def unblock_loft_user(self, viewer: User, *, username: str) -> None:
+        target = self.store.get_user_by_username(username.strip().casefold())
+        contact = self._loft_contact(viewer.id, target.id, status="blocked")
+        if contact is None:
+            raise LookupError(f"No block on {target.display_name}.")
+        self.store.delete_contact(contact.id)
+
     def can_address(
         self, sender: User, *, loft_user_id: int | None = None, contact_id: int | None = None
     ) -> bool:
         if loft_user_id is not None:
-            # Same loft: any active user is addressable without a friend edge.
+            # Same loft: deliver only after an accepted connection (not pending).
             try:
                 user = self.store.get_user(loft_user_id)
             except LookupError:
                 return False
-            return user.status == "active" and user.id != sender.id
+            if user.status != "active" or user.id == sender.id:
+                return False
+            return self._loft_contact(sender.id, loft_user_id, status="accepted") is not None
         if contact_id is not None:
             try:
                 contact = self.store.get_contact(contact_id)
@@ -318,6 +352,23 @@ class PidgeService:
                 and contact.kind == "external"
             )
         return False
+
+    def _loft_contact(
+        self, owner_user_id: int, loft_user_id: int, *, status: str | None = None
+    ) -> Contact | None:
+        for contact in self.store.list_contacts(owner_user_id):
+            if contact.kind != "loft_user" or contact.loft_user_id != loft_user_id:
+                continue
+            if status is not None and contact.status != status:
+                continue
+            return contact
+        return None
+
+    def _loft_block_between(self, a_id: int, b_id: int) -> bool:
+        return (
+            self._loft_contact(a_id, b_id, status="blocked") is not None
+            or self._loft_contact(b_id, a_id, status="blocked") is not None
+        )
 
     def resolve_target_name(self, sender: User, name: str) -> PidgeRecipient:
         needle = name.strip()
@@ -383,6 +434,11 @@ class PidgeService:
                 loft_user_id=recipient.loft_user_id,
                 contact_id=recipient.contact_id,
             ):
+                if recipient.loft_user_id is not None:
+                    raise PermissionError(
+                        f"Cannot address {recipient.display_name}: not connected. "
+                        "Introduce via People, then draft after they accept."
+                    )
                 raise PermissionError(f"Cannot address {recipient.display_name}.")
         slots: dict[str, Any] = {
             "who": {"status": "pending", "value": None},
