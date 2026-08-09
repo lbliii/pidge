@@ -389,6 +389,19 @@ a:hover {
   padding: 0.45rem 0.85rem;
   border-radius: 999px;
   cursor: pointer;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+
+.segmented a:hover,
+.segmented button:hover {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--bay) 8%, transparent);
+}
+
+.segmented a:focus-visible,
+.segmented button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--bay) 50%, transparent);
+  outline-offset: 2px;
 }
 
 .segmented a.is-active,
@@ -1814,5 +1827,83 @@ a.object-row:hover {
 @media (max-width: 640px) {
   .stamp-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* --- People hub folio --- */
+
+.people-folio,
+.introductions-tray {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklab, var(--leather) 14%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--flax) 8%, var(--card)) 0%,
+      var(--card) 55%
+    );
+  box-shadow: var(--shadow-1);
+}
+
+.introductions-tray {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--bay) 6%, var(--card)) 0%,
+      var(--card) 60%
+    );
+}
+
+.folio-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px dashed color-mix(in oklab, var(--leather) 18%, transparent);
+}
+
+.folio-head h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.folio-head .mono {
+  color: var(--mist);
+  font-size: var(--text-sm);
+}
+
+.add-address-panel {
+  margin-bottom: var(--space-5);
+}
+
+.add-address-panel > h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+@media (max-width: 640px) {
+  .people-folio,
+  .introductions-tray {
+    padding: var(--space-4);
+  }
+
+  .person-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .person-row .row-actions {
+    grid-column: 1 / -1;
+    justify-content: start;
   }
 }

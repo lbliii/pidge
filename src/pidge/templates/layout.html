@@ -22,14 +22,13 @@
       <nav class="nav" aria-label="Primary">
         <a href="/" {% if current_path == "/" %}aria-current="page"{% end %}>Desk</a>
         <a href="/inbox" {% if current_path == "/inbox" or current_path == "/sent" %}aria-current="page"{% end %}>Mail</a>
-        <a href="/contacts" {% if current_path == "/contacts" or current_path == "/directory" %}aria-current="page"{% end %}>People</a>
+        <a href="/people" {% if current_path.startswith("/people") or current_path in ("/contacts", "/directory") %}aria-current="page"{% end %}>People</a>
         <details class="nav-account"{% if current_path.startswith("/settings") or current_path in ("/calendar", "/wall") %} open{% end %}>
           <summary>Account</summary>
           <div class="account-menu">
             <a href="/settings/agents" {% if current_path.startswith("/settings") %}aria-current="page"{% end %}>Agents</a>
             <a href="/calendar" {% if current_path == "/calendar" %}aria-current="page"{% end %}>Calendar</a>
             <a href="/wall" {% if current_path == "/wall" %}aria-current="page"{% end %}>Wall</a>
-            <a href="/directory" {% if current_path == "/directory" %}aria-current="page"{% end %}>Directory</a>
             <form method="post" action="/logout">
               {{ csrf_field() }}
               <button class="btn btn-ghost" type="submit">Log out</button>

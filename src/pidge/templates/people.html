@@ -1,0 +1,146 @@
+{% extends "layout.html" %}
+{% block title %}People — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">Addressing · loft graph</p>
+    <h1>People</h1>
+  </div>
+</div>
+
+<div class="segmented" role="tablist" aria-label="People facet">
+  <a href="/people"{% if facet == "loft" %} class="is-active" aria-current="page"{% end %}>In the loft</a>
+  <a href="/people/address-book"{% if facet == "beyond" %} class="is-active" aria-current="page"{% end %}>Beyond the loft</a>
+</div>
+
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
+
+{% if facet == "loft" %}
+<p class="lede" style="margin-top: 0">
+  Same loft — addressable without a friend edge. Introductions are optional social glue, not a permission gate.
+</p>
+
+<div class="people-folio">
+  <div class="folio-head">
+    <h2>Who’s here</h2>
+    <span class="mono">{% if people_count %}{{ people_count }} loft mate{% if people_count != 1 %}s{% end %}{% else %}just you{% end %}</span>
+  </div>
+  {% if people %}
+  <ul class="person-list">
+    {% for person in people %}
+    <li class="person-row">
+      <span class="mark seal" aria-hidden="true">{{ (person.display_name or "?")[:1] }}</span>
+      <div>
+        <strong>{{ person.display_name }}</strong>
+        <div class="meta">@{{ person.username }} · addressable</div>
+        <span class="badge ready">In loft</span>
+      </div>
+      <div class="row-actions">
+        {% if person.username in pending_usernames %}
+        <span class="hint" style="margin: 0">Introduction sent</span>
+        {% else %}
+        <form method="post" action="/directory/connect">
+          {{ csrf_field() }}
+          <input type="hidden" name="username" value="{{ person.username }}">
+          <button class="btn btn-ghost" type="submit">Introduce</button>
+        </form>
+        {% end %}
+      </div>
+    </li>
+    {% end %}
+  </ul>
+  {% else %}
+  <div class="empty-state">
+    <h3>You’re the only one here</h3>
+    <p>Invite someone to register into this loft — then agents can address them.</p>
+    <a class="btn btn-seal" href="/register">Open register</a>
+  </div>
+  {% end %}
+</div>
+
+<section class="introductions-tray" aria-labelledby="introductions-title">
+  <div class="folio-head">
+    <h2 id="introductions-title">Introductions</h2>
+    <span class="mono">{{ pending_intro_count }} pending</span>
+  </div>
+  {% if introductions %}
+  <ul class="object-list">
+    {% for intro in introductions %}
+    <li class="object-row">
+      <span class="mark{% if intro['status'] == 'pending' %} warn{% end %}" aria-hidden="true">{{ (intro['from_name'] or "?")[:1] }}</span>
+      <div>
+        <strong>{% if intro['inbound'] %}{{ intro['from_name'] }} wants to connect{% else %}Introduction to {{ intro['to_name'] }}{% end %}</strong>
+        <div class="preview">{{ intro['from_name'] }} → {{ intro['to_name'] }} · {{ intro['status'] }}</div>
+        <span class="badge {% if intro['status'] == 'pending' %}draft{% elif intro['status'] == 'accepted' %}share{% else %}kind{% end %}">{{ intro['status'].title() }}</span>
+      </div>
+      <div class="row-actions">
+        {% if intro['can_accept'] %}
+        <form method="post" action="/directory/accept">
+          {{ csrf_field() }}
+          <input type="hidden" name="request_id" value="{{ intro['id'] }}">
+          <button class="btn btn-seal" type="submit">Accept</button>
+        </form>
+        {% end %}
+      </div>
+    </li>
+    {% end %}
+  </ul>
+  {% else %}
+  <div class="empty-state">
+    <h3>No introductions yet</h3>
+    <p>Connection asks from loft mates will land here — with names, not IDs.</p>
+  </div>
+  {% end %}
+</section>
+
+{% else %}
+<p class="lede" style="margin-top: 0">
+  Out-of-loft handles must live here before an agent can address them. This is an address folio — not a CRM.
+</p>
+
+<section class="add-address-panel compose-panel" aria-labelledby="add-address-title">
+  <h2 id="add-address-title">Add an address</h2>
+  <form method="post" action="/contacts/add">
+    {{ csrf_field() }}
+    <div class="field">
+      <label for="handle">Handle</label>
+      <input id="handle" name="handle" required placeholder="lucy@elsewhere">
+      <p class="field-hint">External address the agent will use.</p>
+    </div>
+    <div class="field">
+      <label for="display_name">Display name</label>
+      <input id="display_name" name="display_name" placeholder="Lucy">
+    </div>
+    <button class="btn btn-seal" type="submit">Add contact</button>
+  </form>
+</section>
+
+<div class="people-folio">
+  <div class="folio-head">
+    <h2>Address book</h2>
+    <span class="mono">{% if contacts_count %}{{ contacts_count }} contact{% if contacts_count != 1 %}s{% end %}{% else %}empty{% end %}</span>
+  </div>
+  {% if contacts %}
+  <ul class="person-list">
+    {% for c in contacts %}
+    <li class="person-row">
+      <span class="mark{% if c.kind == 'loft_user' %} seal{% elif c.status == 'pending' %} warn{% end %}" aria-hidden="true">{{ (c.display_name or "?")[:1] }}</span>
+      <div>
+        <strong>{{ c.display_name }}</strong>
+        <div class="meta">
+          {% if c.external_handle %}{{ c.external_handle }} · {% end %}beyond the loft
+        </div>
+        <span class="badge {% if c.status == 'pending' %}draft{% elif c.status == 'accepted' %}share{% else %}kind{% end %}">{{ c.status.title() }}</span>
+      </div>
+    </li>
+    {% end %}
+  </ul>
+  {% else %}
+  <div class="empty-state">
+    <h3>Empty book</h3>
+    <p>Add an out-of-loft handle before agents can address them.</p>
+  </div>
+  {% end %}
+</div>
+{% end %}
+{% end %}

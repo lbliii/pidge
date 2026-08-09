@@ -667,18 +667,31 @@ def create_app(
             )
         return Redirect(f"/p/{pidge_id}")
 
-    @app.route("/directory")
-    def directory(request: Request):
+    @app.route("/people")
+    def people_loft(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        return render(request, "people.html", **_people_loft_context(service, user, error=None))
+
+    @app.route("/people/address-book")
+    def people_address_book(request: Request):
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
         return render(
             request,
-            "directory.html",
-            people=service.directory(user),
-            requests=service.store.list_connection_requests(user.id),
-            error=None,
+            "people.html",
+            facet="beyond",
+            **_people_beyond_context(service, user, error=None),
         )
+
+    @app.route("/directory")
+    def directory(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        return Redirect("/people")
 
     @app.route("/directory/connect", methods=["POST"], referenced=True)
     async def directory_connect(request: Request):
@@ -691,13 +704,7 @@ def create_app(
             error = None
         except (LookupError, ValueError, PermissionError) as exc:
             error = str(exc)
-        return render(
-            request,
-            "directory.html",
-            people=service.directory(user),
-            requests=service.store.list_connection_requests(user.id),
-            error=error,
-        )
+        return render(request, "people.html", **_people_loft_context(service, user, error=error))
 
     @app.route("/directory/accept", methods=["POST"], referenced=True)
     async def directory_accept(request: Request):
@@ -707,19 +714,14 @@ def create_app(
         form = await request.form()
         with contextlib.suppress(PermissionError, LookupError, ValueError):
             service.accept_connection(user, int(form.get("request_id", "0")))
-        return Redirect("/contacts")
+        return Redirect("/people")
 
     @app.route("/contacts")
     def contacts_page(request: Request):
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(
-            request,
-            "contacts.html",
-            contacts=service.contacts(user),
-            error=None,
-        )
+        return Redirect("/people/address-book")
 
     @app.route("/contacts/add", methods=["POST"], referenced=True)
     async def contacts_add(request: Request):
@@ -736,7 +738,12 @@ def create_app(
             error = None
         except ValueError as exc:
             error = str(exc)
-        return render(request, "contacts.html", contacts=service.contacts(user), error=error)
+        return render(
+            request,
+            "people.html",
+            facet="beyond",
+            **_people_beyond_context(service, user, error=error),
+        )
 
     @app.route("/calendar")
     def calendar(request: Request):
@@ -1073,6 +1080,66 @@ def _gate(request: Request, require_human: Any) -> User | Redirect:
         return require_human(request)
     except PermissionError:
         return Redirect("/login")
+
+
+def _people_loft_context(service: PidgeService, user: User, *, error: str | None) -> dict[str, Any]:
+    people = service.directory(user)
+    raw_requests = service.store.list_connection_requests(user.id)
+    introductions: list[dict[str, Any]] = []
+    pending_usernames: set[str] = set()
+    for req in raw_requests:
+        if req.to_user_id is None:
+            # External address-book claims belong on Beyond, not loft intros.
+            continue
+        from_user = _safe_user(service, req.from_user_id)
+        to_user = _safe_user(service, req.to_user_id)
+        from_name = from_user.display_name if from_user else "Someone"
+        to_name = to_user.display_name if to_user else "you"
+        if req.from_user_id == user.id and req.status == "pending" and to_user is not None:
+            pending_usernames.add(to_user.username)
+        introductions.append(
+            {
+                "id": req.id,
+                "from_name": from_name,
+                "to_name": to_name if req.to_user_id != user.id else "you",
+                "status": req.status,
+                "can_accept": req.to_user_id == user.id and req.status == "pending",
+                "inbound": req.to_user_id == user.id,
+            }
+        )
+    return {
+        "facet": "loft",
+        "people": people,
+        "people_count": len(people),
+        "introductions": introductions,
+        "pending_intro_count": sum(1 for i in introductions if i["status"] == "pending"),
+        "pending_usernames": pending_usernames,
+        "error": error,
+    }
+
+
+def _safe_user(service: PidgeService, user_id: int | None) -> User | None:
+    if user_id is None:
+        return None
+    try:
+        return service.store.get_user(user_id)
+    except LookupError:
+        return None
+
+
+def _external_contacts(service: PidgeService, user: User):
+    return tuple(c for c in service.contacts(user) if c.kind == "external")
+
+
+def _people_beyond_context(
+    service: PidgeService, user: User, *, error: str | None
+) -> dict[str, Any]:
+    contacts = _external_contacts(service, user)
+    return {
+        "contacts": contacts,
+        "contacts_count": len(contacts),
+        "error": error,
+    }
 
 
 def _cookie(request: Request) -> str | None:
