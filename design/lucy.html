@@ -28,11 +28,18 @@
     >
       <header class="topbar">
         <a class="brand" href="index.html">Pid<em>ge</em></a>
-                <nav class="nav" aria-label="Primary">
-          <a href="inbox.html">Inbox</a>
-          <a href="compose.html">Compose</a>
-          <a href="lucy.html" aria-current="page">Lucy’s view</a>
-          <a href="thread.html">Thread</a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
         </nav>
       </header>
 
@@ -46,16 +53,28 @@
 
       <div class="page-head">
         <div>
-          <p class="kicker">Invite · sealed</p>
+          <p class="kicker">Invite · needs act</p>
           <h1>Tonight at Nowadays</h1>
         </div>
+      </div>
+
+      <div class="steps-rail" aria-label="Receive status" x-show="phase === 'invite'">
+        <span class="step-chip is-done">Delivered</span>
+        <span class="step-chip is-active">Needs act</span>
+      </div>
+      <div class="steps-rail" aria-label="Receive status" x-show="phase !== 'invite'" x-cloak>
+        <span class="step-chip is-done">Delivered</span>
+        <span class="step-chip is-active">Acted</span>
       </div>
 
       <div class="thread-layout">
         <article class="bubble" x-show="phase === 'invite'">
           <header>
             <div>
-              <span class="from">From you</span>
+              <div class="kind-row">
+                <span class="from">From you</span>
+                <span class="badge invite">Invite · needs act</span>
+              </div>
               <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
                 via their agent · pidge:msg_8f3a
               </div>
@@ -67,22 +86,44 @@
             “Tell Lucy we’re meeting tonight at 7pm at Nowadays.”
           </p>
 
-          <div class="cards">
-            <div class="card">
-              <h3>When</h3>
-              <p>Tonight · 7:00 PM</p>
-              <p class="mono">America/New_York</p>
+          <div class="enrich-stack">
+            <div class="place-hero has-art">
+              <h3>Nowadays</h3>
+              <p>Bushwick · kitchen + natural wine</p>
+              <p class="hero-meta">place packet · sealed</p>
             </div>
-            <div class="card map-card">
-              <h3>Where</h3>
+            <div class="fact-strip">
+              <div class="fact">
+                <span class="fact-label">Who</span>
+                <span class="fact-value">You + Lucy</span>
+              </div>
+              <div class="fact">
+                <span class="fact-label">When</span>
+                <span class="fact-value">Tonight · 7:00 PM</span>
+              </div>
+              <div class="fact">
+                <span class="fact-label">Where</span>
+                <span class="fact-value">Nowadays</span>
+              </div>
+            </div>
+            <div class="map-block">
+              <p class="block-label">Map</p>
               <div class="map-pin" aria-hidden="true"></div>
-              <p>Nowadays</p>
-              <p class="mono">56 Bogart St, Brooklyn</p>
+              <strong>56 Bogart St, Brooklyn</strong>
+              <p class="mono">40.706 · -73.923</p>
             </div>
-            <div class="card">
-              <h3>Menu</h3>
-              <p>Kitchen + natural wine</p>
-              <p class="mono">tap for full card</p>
+            <div class="menu-block">
+              <p class="block-label">Menu</p>
+              <strong>Kitchen + natural wine</strong>
+              <ul>
+                <li>Small plates · shared</li>
+                <li>Natural wine list</li>
+              </ul>
+            </div>
+            <div class="reviews-block">
+              <p class="block-label">Reviews</p>
+              <div class="stars" aria-label="4.6 stars">★★★★☆</div>
+              <strong>4.6 · “Best patio in Bushwick”</strong>
             </div>
           </div>
 
@@ -103,7 +144,10 @@
         <article class="bubble" x-show="phase === 'accepted'" x-cloak>
           <p class="confetti-line">You’re in</p>
           <header>
-            <span class="from">RSVP sealed</span>
+            <div class="kind-row">
+              <span class="from">RSVP sealed</span>
+              <span class="badge">Result · accepted</span>
+            </div>
             <span class="verified">Verified</span>
           </header>
           <p class="intent" style="margin-bottom: 0.5rem">Accepted · no conflicts</p>
@@ -113,11 +157,11 @@
           <ul class="timeline">
             <li><time>6:14:02</time><span>Calendar clear</span></li>
             <li><time>6:14:03</time><span>Event written</span></li>
-            <li><time>6:14:03</time><span>RSVP Envelope → you</span></li>
+            <li><time>6:14:03</time><span>Act sealed → you</span></li>
           </ul>
           <div class="actions">
             <a class="btn btn-seal" href="thread.html">See sender thread</a>
-            <a class="btn btn-ghost" href="inbox.html">Lucy’s inbox</a>
+            <a class="btn btn-ghost" href="inbox.html">Lucy’s mail</a>
           </div>
         </article>
 

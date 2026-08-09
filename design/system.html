@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System kit — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+  </head>
+  <body>
+    <div class="shell drawer-root" id="kit-drawer-root">
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
+        </nav>
+      </header>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Design language</p>
+          <h1>System kit</h1>
+        </div>
+        <button type="button" class="btn btn-ghost" id="open-drawer">Open drawer</button>
+      </div>
+      <p class="lede" style="margin-top: -0.5rem">
+        Live specimens. If it isn’t here, it isn’t in the system yet.
+      </p>
+
+      <section class="kit-section">
+        <p class="kit-label">Color + type</p>
+        <div class="swatch-row">
+          <div class="swatch"><i style="background: var(--paper)"></i><span>paper</span></div>
+          <div class="swatch"><i style="background: var(--ink)"></i><span>ink</span></div>
+          <div class="swatch"><i style="background: var(--bay)"></i><span>action</span></div>
+          <div class="swatch"><i style="background: var(--stable)"></i><span>success</span></div>
+          <div class="swatch"><i style="background: var(--clay)"></i><span>danger</span></div>
+          <div class="swatch"><i style="background: var(--flax)"></i><span>flax</span></div>
+        </div>
+        <p style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; text-transform: uppercase; margin: 0 0 0.35rem">
+          Display · seal the invite
+        </p>
+        <p style="margin: 0 0 0.35rem; max-width: 36rem">
+          Body · agents draft; humans decide. Structured mail, not SMTP cosplay.
+        </p>
+        <p class="mono" style="margin: 0; color: var(--ink-soft); font-size: 0.9rem">
+          Mono · pidge:msg_8f3a · pidge:draft · sha256:ab12…
+        </p>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Buttons</p>
+        <div class="specimen-row">
+          <button type="button" class="btn btn-seal">Seal</button>
+          <button type="button" class="btn btn-ghost">Secondary</button>
+          <button type="button" class="btn btn-seal" disabled>Seal blocked</button>
+          <button type="button" class="btn btn-danger">Revoke</button>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Field + alert</p>
+        <div class="compose-panel" style="max-width: 28rem; margin-bottom: 1rem">
+          <div class="field">
+            <label for="kit-label">Label</label>
+            <input id="kit-label" value="Secretary" />
+            <p class="field-hint">Shown on the token list.</p>
+          </div>
+          <div class="field">
+            <label for="kit-bad">Handle</label>
+            <input id="kit-bad" value="lucy@" aria-invalid="true" />
+            <p class="field-error">Needs a full handle.</p>
+          </div>
+        </div>
+        <div class="alert alert-warn">Seal blocked — waiting on who, when, where via enrich_pidge.</div>
+        <div class="alert alert-success">Slots ready — seal to send.</div>
+        <div class="alert alert-danger">Token revoked. MCP calls will fail.</div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Badges + segmented</p>
+        <div class="specimen-row">
+          <span class="badge invite">Invite · sealed</span>
+          <span class="badge invite">Invite · needs act</span>
+          <span class="badge share">Share · sealed</span>
+          <span class="badge">Result · accepted</span>
+          <span class="badge ready">Ready to seal</span>
+          <span class="badge enriching">Enriching</span>
+          <span class="badge draft">Draft</span>
+          <span class="badge revoked">Revoked</span>
+        </div>
+        <div class="segmented" role="tablist" aria-label="Mail facet">
+          <button type="button" class="is-active">In</button>
+          <button type="button">Out</button>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Empty state</p>
+        <div class="empty-state" style="max-width: 28rem">
+          <h3>No drafts on the desk</h3>
+          <p>Point an agent with a scoped token at /mcp.</p>
+          <a class="btn btn-seal" href="agents.html">Mint an agent token</a>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Needs-you row</p>
+        <div class="needs-stack">
+          <a class="needs-row" href="compose.html">
+            <span class="mark warn" aria-hidden="true">!</span>
+            <div>
+              <strong>Tonight at Nowadays</strong>
+              <div class="why">Slots ready — needs your seal</div>
+              <span class="badge ready">Ready to seal</span>
+            </div>
+            <span class="row-actions"><span class="btn btn-seal" style="pointer-events: none">Seal</span></span>
+          </a>
+          <a class="needs-row" href="lucy.html">
+            <span class="mark" aria-hidden="true">L</span>
+            <div>
+              <strong>Invite from you</strong>
+              <div class="why">Needs an act — Accept / Decline</div>
+              <span class="badge invite">Invite · needs act</span>
+            </div>
+            <time datetime="2026-08-08T18:12">6:12 PM</time>
+          </a>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Pidge object row</p>
+        <div class="object-list">
+          <a class="object-row" href="thread.html">
+            <span class="mark seal" aria-hidden="true">Y</span>
+            <div>
+              <strong>Tonight at Nowadays</strong>
+              <div class="preview">To Lucy · invite sealed</div>
+              <span class="badge invite">Invite · sealed</span>
+            </div>
+            <time>6:12 PM</time>
+          </a>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Slot cards + skeleton</p>
+        <div class="cards" style="margin-bottom: 1rem">
+          <div class="card">
+            <h3>Who</h3>
+            <p>Lucy</p>
+            <p class="mono">contact match</p>
+          </div>
+          <div class="card">
+            <h3>When</h3>
+            <p>Tonight · 7:00 PM</p>
+            <p class="mono">America/New_York</p>
+          </div>
+          <div class="card is-skel">
+            <h3>Where</h3>
+            <div class="map-pin" aria-hidden="true"></div>
+            <p>…</p>
+          </div>
+        </div>
+        <ul class="slot-list" style="max-width: 36rem">
+          <li class="slot-row is-ready">
+            <code>who</code>
+            <span class="slot-status">ready</span>
+            <span class="mono">Lucy</span>
+          </li>
+          <li class="slot-row is-pending">
+            <code>where</code>
+            <span class="slot-status">pending</span>
+            <span class="mono">waiting</span>
+          </li>
+        </ul>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Step rail + enriching rail</p>
+        <div class="steps-rail" aria-label="Compose progress">
+          <span class="step-chip is-done">1 Draft</span>
+          <span class="step-chip is-active">2 Enrich</span>
+          <span class="step-chip">3 Seal</span>
+        </div>
+        <div class="compose-panel" style="max-width: 28rem">
+          <h2 style="font-family: var(--font-display); font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 0.5rem">
+            Enriching
+          </h2>
+          <div class="flight-track" aria-hidden="true"><span></span></div>
+          <ul class="ride-log">
+            <li class="is-done">
+              <span class="ride-dot" aria-hidden="true"></span>
+              <span>Resolve Lucy</span>
+              <span class="mono">ok</span>
+            </li>
+            <li class="is-active">
+              <span class="ride-dot" aria-hidden="true"></span>
+              <span>Find Nowadays</span>
+              <span class="mono">place · Brooklyn</span>
+            </li>
+            <li class="is-pending">
+              <span class="ride-dot" aria-hidden="true"></span>
+              <span>Fetch menu</span>
+              <span class="mono">kitchen + wine</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Enrichment widgets + fact strip</p>
+        <div class="enrich-stack" style="max-width: 40rem">
+          <div class="place-hero has-art">
+            <h3>Nowadays</h3>
+            <p>Bushwick · kitchen + natural wine</p>
+            <p class="hero-meta">place · specimen</p>
+          </div>
+          <div class="fact-strip">
+            <div class="fact">
+              <span class="fact-label">Who</span>
+              <span class="fact-value">Lucy</span>
+            </div>
+            <div class="fact">
+              <span class="fact-label">When</span>
+              <span class="fact-value">Tonight · 7:00 PM</span>
+            </div>
+            <div class="fact">
+              <span class="fact-label">Where</span>
+              <span class="fact-value">Nowadays</span>
+            </div>
+          </div>
+          <div class="map-block">
+            <p class="block-label">Map</p>
+            <div class="map-pin" aria-hidden="true"></div>
+            <strong>56 Bogart St, Brooklyn</strong>
+            <p class="mono">40.706 · -73.923</p>
+          </div>
+          <div class="menu-block">
+            <p class="block-label">Menu</p>
+            <strong>Kitchen + natural wine</strong>
+            <ul>
+              <li>Small plates · shared</li>
+              <li>Natural wine list</li>
+            </ul>
+          </div>
+          <div class="reviews-block">
+            <p class="block-label">Reviews</p>
+            <div class="stars" aria-label="4.6 stars">★★★★☆</div>
+            <strong>4.6 · “Best patio in Bushwick”</strong>
+          </div>
+          <div class="article-block">
+            <p class="block-label">Article</p>
+            <strong>DNS-like destinations for private lofts</strong>
+            <p>Share packets prove Pidge is not calendar-only.</p>
+            <a class="btn btn-ghost" href="share.html">Open share mock</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Degraded block + no-image fallback</p>
+        <div class="enrich-stack" style="max-width: 40rem">
+          <div class="place-hero is-mono">
+            <span class="mono-mark" aria-hidden="true">N</span>
+            <h3>Nowadays</h3>
+            <p>No artwork — monogram plane from venue name</p>
+            <p class="hero-meta">never a broken-image icon</p>
+          </div>
+          <div class="block-degraded">
+            <p class="block-label">Menu</p>
+            <p>Couldn’t fetch menu — calm skip. Slots still sealable.</p>
+            <p class="mono">skipped · source down</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Seal CTA states</p>
+        <p class="hint seal-blocked">Seal blocked — waiting on who, when, where via enrich_pidge.</p>
+        <div class="specimen-row">
+          <button type="button" class="btn btn-seal" disabled>Seal</button>
+        </div>
+        <p class="hint seal-ready">Slots ready — seal to send.</p>
+        <div class="specimen-row">
+          <a class="btn btn-seal" href="sent.html">Seal &amp; send to Lucy</a>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Kind-aware act choosers</p>
+        <p class="hint">Invite · RSVP</p>
+        <article class="bubble" style="max-width: 40rem; margin-bottom: 1rem">
+          <header>
+            <div class="kind-row">
+              <span class="from">From you</span>
+              <span class="badge invite">Invite · needs act</span>
+            </div>
+            <span class="verified">Sealed · verified</span>
+          </header>
+          <p class="intent">“Tell Lucy we’re meeting tonight at 7pm at Nowadays.”</p>
+          <div class="rsvp-choice">
+            <button type="button" class="is-yes">Accept</button>
+            <button type="button">Maybe</button>
+            <button type="button">Decline</button>
+          </div>
+        </article>
+        <p class="hint">Share · Ack / Pin (no RSVP)</p>
+        <article class="bubble" style="max-width: 40rem">
+          <header>
+            <div class="kind-row">
+              <span class="from">From you</span>
+              <span class="badge share">Share · sealed</span>
+            </div>
+            <span class="verified">Sealed · verified</span>
+          </header>
+          <p class="intent">“Send Lucy that federation note — no meeting.”</p>
+          <div class="act-choice act-share">
+            <button type="button" class="is-ack">Ack</button>
+            <button type="button">Pin</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Intent + verified (legacy specimen)</p>
+        <article class="bubble" style="max-width: 40rem">
+          <header>
+            <span class="from">From you</span>
+            <span class="verified">Sealed · verified</span>
+          </header>
+          <p class="intent">“Tell Lucy we’re meeting tonight at 7pm at Nowadays.”</p>
+        </article>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Acts timeline + hold / pin</p>
+        <ul class="timeline" style="max-width: 28rem; margin-bottom: 1rem">
+          <li><time>6:12</time><span>Sealed by you</span></li>
+          <li><time>6:14</time><span>Lucy accepted</span></li>
+          <li><time>6:14</time><span>Hold confirmed · Nowadays</span></li>
+        </ul>
+        <div class="quiet-strip" style="max-width: 36rem">
+          <h3>Coming up</h3>
+          <div class="hold-strip">
+            <div>
+              <strong>Tonight at Nowadays</strong>
+              <span class="hint" style="margin: 0">7:00 PM · confirmed</span>
+            </div>
+            <a href="thread.html">Pidge</a>
+          </div>
+          <h3>Wall</h3>
+          <div class="pin-card">
+            <strong>Menu notes · Nowadays</strong>
+            <a href="thread.html">Source</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Preset cards + token row</p>
+        <div class="preset-grid" style="max-width: 40rem">
+          <label class="preset-card is-selected">
+            <input type="radio" name="preset" checked />
+            <strong>Desk</strong>
+            <p>Draft, enrich, propose holds, pin notes.</p>
+          </label>
+          <label class="preset-card">
+            <input type="radio" name="preset" />
+            <strong>Draft</strong>
+            <p><span class="mono">pidge:draft</span> only.</p>
+          </label>
+          <label class="preset-card is-disabled">
+            <input type="radio" name="preset" disabled />
+            <strong>Confirm</strong>
+            <p>Propose seal · browser challenge.</p>
+            <span class="soon">Coming soon</span>
+          </label>
+          <label class="preset-card is-disabled">
+            <input type="radio" name="preset" disabled />
+            <strong>Autopilot</strong>
+            <p>Agent may seal.</p>
+            <span class="soon">Coming soon</span>
+          </label>
+        </div>
+        <ul class="token-list" style="max-width: 40rem">
+          <li class="token-row">
+            <span class="mark agent" aria-hidden="true">A</span>
+            <div>
+              <strong>Secretary</strong>
+              <div class="meta">Desk · active · <span class="mono">pidge:draft</span> …</div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn btn-danger">Revoke</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="kit-section">
+        <p class="kit-label">Person row</p>
+        <ul class="person-list" style="max-width: 40rem">
+          <li class="person-row">
+            <span class="mark" aria-hidden="true">L</span>
+            <div>
+              <strong>Lucy</strong>
+              <div class="meta">@lucy · same loft</div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn btn-ghost">Request connection</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <footer class="footer">
+        <span>Mock · system kit</span>
+        <a href="desk.html">Desk blotter →</a>
+      </footer>
+
+      <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+      <aside class="drawer" id="kit-drawer" aria-hidden="true" aria-label="Secret reveal">
+        <header>
+          <div>
+            <p class="kicker">Shown once</p>
+            <h2>MCP snippet</h2>
+          </div>
+          <button type="button" class="icon-btn" id="close-drawer" aria-label="Close">×</button>
+        </header>
+        <p class="hint">Copy into <span class="mono">~/.cursor/mcp.json</span>. The bearer is shown once.</p>
+        <pre>{
+  "mcpServers": {
+    "pidge": {
+      "url": "https://loft.example/mcp",
+      "headers": {
+        "Authorization": "Bearer pidge_at_…"
+      }
+    }
+  }
+}</pre>
+        <button type="button" class="btn btn-seal">Copy snippet</button>
+      </aside>
+    </div>
+    <script>
+      (function () {
+        var root = document.getElementById("kit-drawer-root");
+        var drawer = document.getElementById("kit-drawer");
+        var backdrop = document.getElementById("drawer-backdrop");
+        function open() {
+          root.classList.add("is-open");
+          drawer.setAttribute("aria-hidden", "false");
+          backdrop.hidden = false;
+        }
+        function close() {
+          root.classList.remove("is-open");
+          drawer.setAttribute("aria-hidden", "true");
+          backdrop.hidden = true;
+        }
+        document.getElementById("open-drawer").addEventListener("click", open);
+        document.getElementById("close-drawer").addEventListener("click", close);
+        backdrop.addEventListener("click", close);
+      })();
+    </script>
+  </body>
+</html>

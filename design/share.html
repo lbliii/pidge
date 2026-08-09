@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Share — Federation note — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  </head>
+  <body>
+    <div
+      class="shell"
+      x-data="{
+        phase: 'open',
+        ack() { this.phase = 'acked'; },
+        pin() { this.phase = 'pinned'; }
+      }"
+    >
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
+        </nav>
+      </header>
+
+      <div class="recipient-bar">
+        <div>
+          <strong>Lucy’s Pidge</strong>
+          <div class="mono" style="font-size: 0.8rem; color: var(--mist)">share packet · not a calendar invite</div>
+        </div>
+        <a class="btn btn-ghost" href="thread.html">Invite canvas</a>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Share · needs eyes</p>
+          <h1>Loft federation note</h1>
+        </div>
+      </div>
+
+      <div class="steps-rail" aria-label="Receive status">
+        <span class="step-chip is-done">Delivered</span>
+        <span class="step-chip" :class="phase === 'open' ? 'is-active' : 'is-done'">Needs eyes</span>
+        <span class="step-chip" :class="phase !== 'open' ? 'is-active' : ''">Acted</span>
+      </div>
+
+      <div class="thread-layout">
+        <article class="bubble" x-show="phase === 'open'">
+          <header>
+            <div>
+              <div class="kind-row">
+                <span class="from">From you</span>
+                <span class="badge share">Share · sealed</span>
+              </div>
+              <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
+                pidge:msg_c2e1 · when/where = none
+              </div>
+            </div>
+            <span class="verified">Sealed · verified</span>
+          </header>
+
+          <p class="intent">
+            “Send Lucy that piece on loft federation — no meeting.”
+          </p>
+
+          <div class="enrich-stack">
+            <div class="fact-strip">
+              <div class="fact">
+                <span class="fact-label">Who</span>
+                <span class="fact-value">Lucy</span>
+              </div>
+            </div>
+            <div class="article-block">
+              <p class="block-label">Article</p>
+              <strong>DNS-like destinations for private lofts</strong>
+              <p>
+                How peer lofts register reachable handles without turning mail
+                into a public social graph.
+              </p>
+              <p class="mono">source · federation-notes · fetched_at 2026-08-08</p>
+              <a class="btn btn-ghost" href="#" style="margin-top: 0.5rem">Open link</a>
+            </div>
+          </div>
+
+          <p class="hint">No when/where — omitted from the fact strip. Acts are Ack / Pin only.</p>
+
+          <div class="act-choice act-share">
+            <button type="button" class="is-ack" @click="ack()">Ack</button>
+            <button type="button" @click="pin()">Pin</button>
+          </div>
+        </article>
+
+        <article class="bubble" x-show="phase === 'acked'" x-cloak>
+          <header>
+            <div class="kind-row">
+              <span class="from">Acknowledged</span>
+              <span class="badge">Result · filed</span>
+            </div>
+            <span class="verified">Noted</span>
+          </header>
+          <p style="margin: 0; color: var(--ink-soft)">
+            Ack sealed back. No calendar residue — share packets stay on the wall if pinned.
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" @click="phase = 'open'">Back</button>
+            <a class="btn btn-seal" href="desk.html">Desk</a>
+          </div>
+        </article>
+
+        <article class="bubble" x-show="phase === 'pinned'" x-cloak>
+          <header>
+            <div class="kind-row">
+              <span class="from">Pinned to wall</span>
+              <span class="badge">Result · filed</span>
+            </div>
+            <span class="verified">On wall</span>
+          </header>
+          <div class="pin-card" style="margin-top: 0.75rem">
+            <strong>DNS-like destinations for private lofts</strong>
+            <a href="#">Source</a>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" @click="phase = 'open'">Back</button>
+            <a class="btn btn-seal" href="desk.html">Desk</a>
+          </div>
+        </article>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · share packet</span>
+        <span>Pidge is not calendar-only</span>
+      </footer>
+    </div>
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agents — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+  </head>
+  <body>
+    <div class="shell drawer-root is-open" id="agents-root">
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account" open>
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html" aria-current="page">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
+        </nav>
+      </header>
+
+      <div class="page-head">
+        <div>
+          <p class="kicker">Trust ladder · mint once</p>
+          <h1>Agent keys</h1>
+        </div>
+      </div>
+      <p class="lede" style="margin-top: -0.5rem">
+        Scoped bearer tokens for MCP. Agents never share your browser session.
+        Humans seal; agents draft and enrich.
+      </p>
+
+      <div class="alert alert-warn">
+        After minting, copy the snippet immediately — the secret is shown once.
+      </div>
+
+      <section class="compose-panel" style="margin-bottom: 1.5rem">
+        <p class="kicker" style="margin-bottom: 0.5rem">Connect an agent</p>
+        <ol class="hint" style="padding-left: 1.2rem; margin-top: 0">
+          <li>Choose a preset and mint.</li>
+          <li>Paste the snippet into <code>~/.cursor/mcp.json</code>.</li>
+          <li>Endpoint: <code class="mono">https://loft.example/mcp</code></li>
+        </ol>
+      </section>
+
+      <form class="compose-panel" style="margin-bottom: 1.5rem" action="#" method="get">
+        <div class="field">
+          <label for="token-label">Label</label>
+          <input id="token-label" name="label" value="Secretary" />
+          <p class="field-hint">Shown on the token list.</p>
+        </div>
+
+        <p class="hint" style="margin-bottom: 0.35rem">Preset</p>
+        <div class="preset-grid">
+          <label class="preset-card is-selected">
+            <input type="radio" name="preset" value="desk" checked />
+            <strong>Desk</strong>
+            <p>Draft, enrich, propose holds, pin notes (default).</p>
+          </label>
+          <label class="preset-card">
+            <input type="radio" name="preset" value="draft" />
+            <strong>Draft</strong>
+            <p><span class="mono">pidge:draft</span> only — narrower write path.</p>
+          </label>
+          <label class="preset-card is-disabled">
+            <input type="radio" name="preset" value="confirm" disabled />
+            <strong>Confirm</strong>
+            <p>Propose seal · one-shot browser challenge.</p>
+            <span class="soon">Coming soon</span>
+          </label>
+          <label class="preset-card is-disabled">
+            <input type="radio" name="preset" value="autopilot" disabled />
+            <strong>Autopilot</strong>
+            <p>Agent may seal with <span class="mono">pidge:seal</span>.</p>
+            <span class="soon">Coming soon</span>
+          </label>
+        </div>
+
+        <p class="hint">
+          Desk scopes:
+          <code class="mono">pidge:draft</code>
+          <code class="mono">pidge:enrich</code>
+          <code class="mono">pidge:calendar</code>
+          <code class="mono">pidge:notes</code>
+        </p>
+        <button type="button" class="btn btn-seal" id="mint-btn">Mint token</button>
+      </form>
+
+      <div class="segmented" role="tablist" aria-label="Token filter">
+        <button type="button" class="is-active">Active</button>
+        <button type="button">Revoked</button>
+      </div>
+
+      <ul class="token-list">
+        <li class="token-row">
+          <span class="mark agent" aria-hidden="true">A</span>
+          <div>
+            <strong>Secretary</strong>
+            <div class="meta">Desk · active · minted just now</div>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-danger">Revoke</button>
+          </div>
+        </li>
+        <li class="token-row">
+          <span class="mark agent" aria-hidden="true">D</span>
+          <div>
+            <strong>Draft-only Cursor</strong>
+            <div class="meta">Draft · active · <span class="mono">pidge:draft</span></div>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-danger">Revoke</button>
+          </div>
+        </li>
+      </ul>
+
+      <footer class="footer">
+        <span>Mock · agents ritual</span>
+        <a href="desk.html">Back to desk</a>
+      </footer>
+
+      <div class="drawer-backdrop" id="drawer-backdrop"></div>
+      <aside class="drawer" id="secret-drawer" aria-hidden="false" aria-label="MCP snippet shown once">
+        <header>
+          <div>
+            <p class="kicker">Shown once</p>
+            <h2>Copy into Cursor</h2>
+          </div>
+          <button type="button" class="icon-btn" id="close-drawer" aria-label="Close">×</button>
+        </header>
+        <div class="alert alert-success">Token minted. Paste this, then close — you won’t see the secret again.</div>
+        <pre id="mcp-snippet">{
+  "mcpServers": {
+    "pidge": {
+      "url": "https://loft.example/mcp",
+      "headers": {
+        "Authorization": "Bearer pidge_at_8f3a…demo"
+      }
+    }
+  }
+}</pre>
+        <div class="actions" style="margin-top: 0">
+          <button type="button" class="btn btn-seal" id="copy-btn">Copy snippet</button>
+          <button type="button" class="btn btn-ghost" id="close-drawer-2">Done</button>
+        </div>
+      </aside>
+    </div>
+    <script>
+      (function () {
+        var root = document.getElementById("agents-root");
+        var drawer = document.getElementById("secret-drawer");
+        var backdrop = document.getElementById("drawer-backdrop");
+        function open() {
+          root.classList.add("is-open");
+          drawer.setAttribute("aria-hidden", "false");
+        }
+        function close() {
+          root.classList.remove("is-open");
+          drawer.setAttribute("aria-hidden", "true");
+        }
+        document.getElementById("mint-btn").addEventListener("click", open);
+        document.getElementById("close-drawer").addEventListener("click", close);
+        document.getElementById("close-drawer-2").addEventListener("click", close);
+        backdrop.addEventListener("click", close);
+        document.getElementById("copy-btn").addEventListener("click", function () {
+          var text = document.getElementById("mcp-snippet").textContent;
+          if (navigator.clipboard) navigator.clipboard.writeText(text.trim());
+          this.textContent = "Copied";
+        });
+      })();
+    </script>
+  </body>
+</html>

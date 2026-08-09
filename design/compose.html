@@ -20,11 +20,15 @@
       x-data="{
         step: 'waiting',
         intent: 'Tell Lucy we’re meeting tonight at 7 at Nowadays',
+        blocksReady: false,
+        menuFailed: false,
         ride: [
           { id: 'who', label: 'Resolve Lucy', detail: 'contact match', state: 'pending' },
           { id: 'when', label: 'Parse time', detail: 'tonight · 7:00 PM', state: 'pending' },
           { id: 'where', label: 'Find Nowadays', detail: 'place · Brooklyn', state: 'pending' },
-          { id: 'menu', label: 'Fetch menu', detail: 'kitchen + wine', state: 'pending' }
+          { id: 'map', label: 'Fetch map', detail: 'lat/lng', state: 'pending' },
+          { id: 'menu', label: 'Fetch menu', detail: 'kitchen + wine', state: 'pending' },
+          { id: 'reviews', label: 'Fetch reviews', detail: 'places', state: 'pending' }
         ],
         slots: {
           who: { status: 'pending', value: null },
@@ -33,7 +37,9 @@
         },
         receiveDraft() {
           if (this.step !== 'waiting') return;
-          this.step = 'flying';
+          this.step = 'enriching';
+          this.blocksReady = false;
+          this.menuFailed = false;
           this.ride.forEach((r) => (r.state = 'pending'));
           Object.keys(this.slots).forEach((k) => {
             this.slots[k] = { status: 'pending', value: null };
@@ -45,18 +51,29 @@
           };
           const run = (i) => {
             if (i >= this.ride.length) {
+              this.blocksReady = true;
+              this.menuFailed = true;
               this.step = 'ready';
               return;
             }
             this.ride[i].state = 'active';
             setTimeout(() => {
-              this.ride[i].state = 'done';
-              const key = this.ride[i].id === 'menu' ? null : this.ride[i].id;
+              const item = this.ride[i];
+              if (item.id === 'menu') {
+                item.state = 'done';
+                item.detail = 'skipped · source down';
+              } else {
+                item.state = 'done';
+              }
+              const key = ['who', 'when', 'where'].includes(item.id) ? item.id : null;
               if (key && this.slots[key]) {
                 this.slots[key] = { status: 'ready', value: values[key] };
               }
+              if (item.id === 'where') {
+                this.blocksReady = true;
+              }
               run(i + 1);
-            }, 520);
+            }, 480);
           };
           run(0);
         }
@@ -65,23 +82,30 @@
       <header class="topbar">
         <a class="brand" href="index.html">Pid<em>ge</em></a>
         <nav class="nav" aria-label="Primary">
-          <a href="inbox.html">Inbox</a>
-          <a href="compose.html" aria-current="page">Compose</a>
-          <a href="lucy.html">Lucy’s view</a>
-          <a href="thread.html">Thread</a>
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
         </nav>
       </header>
 
       <div class="page-head">
         <div>
-          <p class="kicker">Agent inbound → fly → seal</p>
+          <p class="kicker">Draft → enrich → seal</p>
           <h1>Compose</h1>
         </div>
       </div>
 
       <div class="steps-rail" aria-label="Compose progress">
-        <span class="step-chip" :class="step === 'waiting' ? 'is-active' : 'is-done'">1 Agent</span>
-        <span class="step-chip" :class="step === 'flying' ? 'is-active' : (step === 'ready' ? 'is-done' : '')">2 Fly</span>
+        <span class="step-chip" :class="step === 'waiting' ? 'is-active' : 'is-done'">1 Draft</span>
+        <span class="step-chip" :class="step === 'enriching' ? 'is-active' : (step === 'ready' ? 'is-done' : '')">2 Enrich</span>
         <span class="step-chip" :class="step === 'ready' ? 'is-active' : ''">3 Seal</span>
       </div>
 
@@ -91,7 +115,7 @@
             <div>
               <p class="lede" style="margin-top:0">
                 No free-type box. Your agent calls <code>draft_pidge</code> /
-                <code>enrich_pidge</code> on MCP; this desk only watches the flight
+                <code>enrich_pidge</code> on MCP; this desk watches enriching
                 and seals.
               </p>
               <p class="hint">Demo: simulate an inbound draft from the secretary agent.</p>
@@ -105,8 +129,14 @@
 
           <template x-if="step !== 'waiting'">
             <div>
+              <div class="kind-row">
+                <span class="badge invite">Invite · draft</span>
+                <span class="badge enriching" x-show="step === 'enriching'" x-cloak>Enriching</span>
+                <span class="badge ready" x-show="step === 'ready'" x-cloak>Ready to seal</span>
+              </div>
               <p class="hint">Intent (from agent)</p>
               <p><strong x-text="intent"></strong></p>
+
               <p class="hint">Slots</p>
               <ul class="slot-list">
                 <template x-for="key in ['who', 'when', 'where']" :key="key">
@@ -117,14 +147,73 @@
                   </li>
                 </template>
               </ul>
-              <p class="hint seal-blocked" x-show="step === 'flying'" x-cloak>
+
+              <p class="hint">Enrich preview</p>
+              <div class="enrich-stack" :class="!blocksReady ? 'is-skel' : ''">
+                <div class="place-hero" :class="blocksReady ? 'has-art' : 'is-mono'">
+                  <span class="mono-mark" x-show="!blocksReady" aria-hidden="true">N</span>
+                  <h3 x-text="blocksReady ? 'Nowadays' : '…'"></h3>
+                  <p x-text="blocksReady ? 'Bushwick · kitchen + natural wine' : 'Resolving place…'"></p>
+                  <p class="hero-meta" x-show="blocksReady" x-cloak>place · fetching blocks</p>
+                </div>
+                <div class="fact-strip" x-show="blocksReady" x-cloak>
+                  <div class="fact">
+                    <span class="fact-label">Who</span>
+                    <span class="fact-value" x-text="slots.who.value || '…'"></span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">When</span>
+                    <span class="fact-value" x-text="slots.when.value || '…'"></span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">Where</span>
+                    <span class="fact-value">Nowadays</span>
+                  </div>
+                </div>
+                <div class="map-block">
+                  <p class="block-label">Map</p>
+                  <template x-if="blocksReady">
+                    <div>
+                      <div class="map-pin" aria-hidden="true"></div>
+                      <strong>56 Bogart St, Brooklyn</strong>
+                      <p class="mono">40.706 · -73.923</p>
+                    </div>
+                  </template>
+                  <template x-if="!blocksReady">
+                    <p class="mono">…</p>
+                  </template>
+                </div>
+                <div class="block-degraded" x-show="menuFailed" x-cloak>
+                  <p class="block-label">Menu</p>
+                  <p>Couldn’t fetch menu — seal still OK. Slots gate seal; blocks do not.</p>
+                  <p class="mono">skipped · source down</p>
+                </div>
+                <div class="menu-block" x-show="!menuFailed && step === 'enriching'" x-cloak>
+                  <p class="block-label">Menu</p>
+                  <p class="mono">fetching…</p>
+                </div>
+                <div class="reviews-block">
+                  <p class="block-label">Reviews</p>
+                  <template x-if="step === 'ready'">
+                    <div>
+                      <div class="stars" aria-label="4.6 stars">★★★★☆</div>
+                      <strong>4.6 · “Best patio in Bushwick”</strong>
+                    </div>
+                  </template>
+                  <template x-if="step !== 'ready'">
+                    <p class="mono">…</p>
+                  </template>
+                </div>
+              </div>
+
+              <p class="hint seal-blocked" x-show="step === 'enriching'" x-cloak>
                 Seal blocked — waiting on who, when, where via enrich_pidge.
               </p>
               <p class="hint seal-ready" x-show="step === 'ready'" x-cloak>
-                Slots ready — seal to send.
+                Slots ready — seal to send. Optional menu block degraded; still sealable.
               </p>
               <div class="actions" style="margin-top: 1rem">
-                <button type="button" class="btn btn-seal" disabled x-show="step === 'flying'" x-cloak>
+                <button type="button" class="btn btn-seal" disabled x-show="step === 'enriching'" x-cloak>
                   Seal
                 </button>
                 <a class="btn btn-seal" href="sent.html" x-show="step === 'ready'" x-cloak>
@@ -136,25 +225,25 @@
         </div>
 
         <aside class="flight-rail">
-          <h2>Flight</h2>
+          <h2>Enriching</h2>
           <template x-if="step === 'waiting'">
             <p class="hint">Waiting on agent inbound…</p>
           </template>
-          <template x-if="step === 'flying'">
+          <template x-if="step === 'enriching'">
             <div>
-              <p class="hint">State: flying</p>
+              <p class="hint">State: enriching</p>
               <div class="flight-track" aria-hidden="true"><span></span></div>
             </div>
           </template>
           <template x-if="step === 'ready'">
-            <p class="hint">State: done</p>
+            <p class="hint">State: enriched · ready to seal</p>
           </template>
           <ul class="ride-log" x-show="step !== 'waiting'" x-cloak>
             <template x-for="item in ride" :key="item.id">
               <li :class="'is-' + item.state">
                 <span class="ride-dot" aria-hidden="true"></span>
                 <span x-text="item.label"></span>
-                <span class="mono" x-text="item.state === 'done' ? 'ok' : item.detail"></span>
+                <span class="mono" x-text="item.state === 'done' ? (item.id === 'menu' ? 'skip' : 'ok') : item.detail"></span>
               </li>
             </template>
           </ul>
@@ -163,49 +252,12 @@
 
       <footer class="footer">
         <span>Mock · compose flow</span>
-        <span>Agent inbound → fly → seal</span>
+        <span>Draft → Enrich → Seal</span>
       </footer>
     </div>
     <style>
       [x-cloak] {
         display: none !important;
-      }
-      .slot-list {
-        list-style: none;
-        margin: 0.5rem 0 1rem;
-        padding: 0;
-        display: grid;
-        gap: 0.4rem;
-      }
-      .slot-row {
-        display: grid;
-        grid-template-columns: 4.5rem 4.5rem 1fr;
-        gap: 0.5rem;
-        align-items: center;
-        padding: 0.45rem 0.65rem;
-        border-radius: 10px;
-        border: 1px solid var(--line);
-        background: color-mix(in oklab, var(--paper) 70%, white);
-        font-size: 0.92rem;
-      }
-      .slot-row.is-pending { opacity: 0.65; }
-      .slot-row.is-ready {
-        border-color: color-mix(in oklab, var(--stable) 30%, transparent);
-      }
-      .slot-status {
-        font-family: var(--font-mono);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--mist);
-      }
-      .slot-row.is-ready .slot-status { color: var(--stable); }
-      .seal-ready { color: var(--stable); }
-      .seal-blocked { color: #8b3a2a; }
-      .btn:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-        transform: none;
       }
       .flight-rail h2 {
         font-family: var(--font-display);

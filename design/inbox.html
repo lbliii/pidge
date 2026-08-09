@@ -17,28 +17,40 @@
     <div class="shell">
       <header class="topbar">
         <a class="brand" href="index.html">Pid<em>ge</em></a>
-                <nav class="nav" aria-label="Primary">
-          <a href="inbox.html" aria-current="page">Inbox</a>
-          <a href="compose.html">Compose</a>
-          <a href="lucy.html">Lucy’s view</a>
-          <a href="thread.html">Thread</a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html" aria-current="page">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
         </nav>
       </header>
 
       <div class="page-head">
         <div>
           <p class="kicker">Your graph</p>
-          <h1>Inbox</h1>
+          <h1>Mail</h1>
         </div>
-        <a class="btn btn-seal" href="compose.html">New Pidge</a>
+        <a class="btn btn-seal" href="compose.html">Open compose</a>
       </div>
 
-      <p class="lede" style="margin-top: -0.5rem">
+      <div class="segmented" role="tablist" aria-label="Mail facet">
+        <a href="inbox.html" class="is-active" aria-current="page">In</a>
+        <a href="sent.html">Out</a>
+      </div>
+
+      <p class="lede" style="margin-top: 0">
         Walk the demo:
-        <a href="compose.html">compose</a> →
-        <a href="sent.html">sent</a> →
-        <a href="lucy.html">Lucy RSVPs</a> →
-        <a href="thread.html">settled thread</a>
+        <a href="compose.html">Draft → Enrich → Seal</a> →
+        <a href="sent.html">delivered</a> →
+        <a href="lucy.html">Lucy acts</a> →
+        <a href="thread.html">settled thread</a> ·
+        <a href="share.html">share packet</a>
       </p>
 
       <div class="inbox">
@@ -47,7 +59,7 @@
           <div>
             <strong>Lucy accepted</strong>
             <div class="preview">RSVP yes · calendar added · Nowadays 7pm</div>
-            <span class="badge">Result · verified</span>
+            <span class="badge">Result · accepted</span>
           </div>
           <time datetime="2026-08-07T18:14">6:14 PM</time>
         </a>

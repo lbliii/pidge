@@ -277,6 +277,11 @@
 @media (prefers-reduced-motion: reduce) {
   .flight-track > span,
   .card.is-skel::after,
+  .enrich-stack.is-skel .place-hero::after,
+  .enrich-stack.is-skel .map-block::after,
+  .enrich-stack.is-skel .menu-block::after,
+  .enrich-stack.is-skel .reviews-block::after,
+  .enrich-stack.is-skel .article-block::after,
   .is-active .ride-dot {
     animation: none !important;
   }
