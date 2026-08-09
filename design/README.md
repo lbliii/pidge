@@ -46,6 +46,7 @@ quiet peeks on the desk.
 - [login.html](./login.html) — enter the loft
 - [index.html](./index.html) — landing
 - [inbox.html](./inbox.html) · [fonts.html](./fonts.html)
+- [stamps.md](./stamps.md) — letter stamp rules (mint, types, anti-HUD) · album mock TBD
 
 ```bash
 python -m http.server 8766
@@ -57,6 +58,21 @@ python -m http.server 8766
 **Compose constraint:** No free-type authoring box. Compose is **agent-inbound
 only**. Humans seal; agents draft and enrich via MCP (`draft_pidge`,
 `enrich_pidge`).
+
+---
+
+## Letter stamps (delight layer)
+
+Collectible postage earned on **Seal** — not XP. Full rules:
+[stamps.md](./stamps.md). Mocks: album + affixed packet face (issues #77–#78).
+
+Summary:
+
+- **Mint** only on `draft → sealed` (session, challenge, or Autopilot)
+- **Cancellation** = date · loft · hash · **Stamp** = commemorative face
+- Types: definitive (by kind) · pictorial (first place/article) · person
+  (first recipient) · special (rare loft moments)
+- Anti-HUD: no streaks, no gating, no stamp showers
 
 ---
 
