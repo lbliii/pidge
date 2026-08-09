@@ -292,7 +292,7 @@ async def test_propose_seal_happy_path_and_redeem_once(
             headers={"Cookie": session},
         )
         assert sealed.status == 302
-        assert f"/p/{draft.id}" in (_header(sealed, "location") or "")
+        assert f"/sent/{draft.id}" in (_header(sealed, "location") or "")
         assert service.store.get_pidge(draft.id).state == "sealed"
 
         reuse = await client.post(

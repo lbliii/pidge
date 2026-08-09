@@ -162,6 +162,7 @@ async def test_mail_segmented_facet_markup(app) -> None:
         sent = await client.get("/sent", headers={"Cookie": cookies})
         assert sent.status == 200
         assert 'aria-current="page">Out</a>' in sent.text
+        assert "Nothing sealed yet" in sent.text or "empty-state" in sent.text
 
 
 @pytest.mark.asyncio

@@ -452,14 +452,35 @@ def create_app(
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(request, "inbox.html", messages=service.store.list_inbox(user.id))
+        return render(
+            request,
+            "inbox.html",
+            rows=_mail_rows(service, user, service.store.list_inbox(user.id), facet="in"),
+        )
 
     @app.route("/sent")
     def sent(request: Request):
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(request, "sent.html", messages=service.store.list_sent(user.id))
+        return render(
+            request,
+            "sent.html",
+            rows=_mail_rows(service, user, service.store.list_sent(user.id), facet="out"),
+        )
+
+    @app.route("/sent/{pidge_id:int}")
+    def sent_delivery(request: Request, pidge_id: int):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        try:
+            msg = service.get_pidge_for(user, pidge_id)
+        except (LookupError, PermissionError):
+            return Response("Not found", status=404)
+        if msg.author_id != user.id or msg.state not in {"sealed", "revoked", "superseded"}:
+            return Redirect(f"/p/{pidge_id}")
+        return render(request, "delivery.html", **_delivery_context(service, msg))
 
     @app.route("/compose")
     def compose_index(request: Request):
@@ -498,7 +519,7 @@ def create_app(
                 "compose.html",
                 **_compose_context(service, msg, error=str(exc)),
             )
-        return Redirect(f"/p/{sealed.id}")
+        return Redirect(f"/sent/{sealed.id}")
 
     @app.route("/compose/{draft_id:int}/discard", methods=["POST"], referenced=True)
     async def discard_draft(request: Request, draft_id: int):
@@ -565,7 +586,7 @@ def create_app(
             return Response(detail, status=status)
         except ValueError as exc:
             return Response(str(exc), status=403)
-        return Redirect(f"/p/{sealed.id}")
+        return Redirect(f"/sent/{sealed.id}")
 
     @app.route("/compose/{draft_id:int}/flight", referenced=True)
     def compose_flight_feed(request: Request, draft_id: int):
@@ -1158,6 +1179,88 @@ def _desk_context(service: PidgeService, user: User) -> dict[str, Any]:
         "mail_peek": mail_peek[:4],
         "holds": holds,
         "pins": pins,
+    }
+
+
+def _mail_rows(
+    service: PidgeService, viewer: User, messages: tuple[Any, ...], *, facet: str
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for msg in messages:
+        kind = msg.kind or "invite"
+        kind_label = _kind_label(kind)
+        if facet == "in":
+            acts = tuple(
+                a for a in service.store.list_acts(msg.id) if a.actor_user_id == viewer.id
+            )
+            if _message_needs_act(kind, acts):
+                badge = f"{kind_label} · needs act"
+                badge_class = kind if kind in {"invite", "share"} else "kind"
+            else:
+                badge = f"Result · {_act_stance_label(acts)}"
+                badge_class = ""
+            avatar = (msg.author_name or "?")[:1]
+            preview = f"From {msg.author_name or 'Someone'}"
+            if msg.intent:
+                preview = f"{preview} · {msg.intent}"
+        else:
+            acts = service.store.list_acts(msg.id)
+            if acts:
+                badge = f"Result · {_act_stance_label(acts)}"
+                badge_class = ""
+            else:
+                badge = f"{kind_label} · sealed"
+                badge_class = kind if kind in {"invite", "share"} else "kind"
+            recipients = service.store.recipients_for(msg.id)
+            names = [r.display_name for r in recipients if getattr(r, "display_name", None)]
+            preview = f"To {', '.join(names)}" if names else (msg.intent or "sealed")
+            avatar = (msg.summary or msg.intent or "?")[:1]
+        stamp = msg.sealed_at or msg.updated_at
+        rows.append(
+            {
+                "id": msg.id,
+                "href": f"/p/{msg.id}",
+                "title": msg.summary or msg.intent or "Sealed Pidge",
+                "preview": preview,
+                "badge": badge,
+                "badge_class": badge_class,
+                "avatar": (avatar or "?").upper(),
+                "sealed": msg.state == "sealed",
+                "time": _format_desk_time(stamp),
+                "time_iso": stamp.isoformat() if stamp is not None else None,
+            }
+        )
+    return rows
+
+
+def _delivery_context(service: PidgeService, msg: Any) -> dict[str, Any]:
+    recipients = service.store.recipients_for(msg.id)
+    names = [r.display_name for r in recipients if getattr(r, "display_name", None)]
+    primary = names[0] if names else "your recipient"
+    if len(names) > 1:
+        hero = f"On their desks"
+        lead_names = ", ".join(names[:-1]) + f" and {names[-1]}"
+    else:
+        hero = f"On {primary}’s desk"
+        lead_names = primary
+    acts = service.store.list_acts(msg.id)
+    waiting = "Waiting on act…" if not acts else f"Act landed · {_act_stance_label(acts)}"
+    sealed_at = msg.sealed_at
+    sealed_clock = sealed_at.strftime("%-I:%M:%S %p") if sealed_at else "—"
+    return {
+        "message": msg,
+        "hero_title": hero,
+        "recipient_line": lead_names,
+        "kind_label": _kind_label(msg.kind or "invite"),
+        "timeline": [
+            {"time": sealed_clock, "text": "Drafted · intent captured"},
+            {"time": sealed_clock, "text": "Enriched · sealed (who · when · where · blocks)"},
+            {
+                "time": sealed_clock,
+                "text": f"Delivered to {lead_names}",
+            },
+            {"time": "—", "text": waiting},
+        ],
     }
 
 

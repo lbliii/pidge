@@ -49,7 +49,7 @@ Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pi
 Mint a bearer token under **Agents** settings (Desk by default). Desk/Confirm cannot seal; Autopilot with `pidge:seal` can:
 
 ```bash
-BASE=http://127.0.0.1:8000   # or https://web-production-04a7d.up.railway.app
+BASE=http://127.0.0.1:8000   # or https://pidge.lol
 TOKEN=pidge_at_…
 
 curl -sS "$BASE/mcp" -H "Authorization: Bearer $TOKEN" \
@@ -93,7 +93,7 @@ Runs against in-process **MemoryStore** (no Postgres). Optional live loft:
 
 ```bash
 uv run python scripts/dogfood_nowadays.py \
-  --base-url https://web-production-04a7d.up.railway.app \
+  --base-url https://pidge.lol \
   --bootstrap-token "$PIDGE_BOOTSTRAP_TOKEN" \
   --owner-password '…' --lucy-password '…'
 ```
@@ -102,10 +102,12 @@ Second loft member: the script registers **Lucy** via `/register` (or logs her i
 
 ## Addressing
 
-- **Same loft:** directory of members; message anyone on this deployment
-- **Out of loft:** must add them to **Contacts** first
+- **Same loft:** People → In the loft; message anyone on this deployment
+- **Beyond the loft:** People → Beyond the loft; add the handle before agents can address them
 
 ## Railway
+
+Production loft: **https://pidge.lol** (custom domain; Railway service domain still works as fallback).
 
 One app service + Postgres:
 
@@ -113,6 +115,7 @@ One app service + Postgres:
 |---|---|
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
 | `PIDGE_ENV` | `production` |
+| `PIDGE_PUBLIC_ORIGIN` | `https://pidge.lol` (seal challenge + MCP snippet URLs) |
 | `PIDGE_SECRET_KEY` | `${{secret(64)}}` |
 | `PIDGE_BOOTSTRAP_TOKEN` | `${{secret(32)}}` |
 | `RAILPACK_PYTHON_VERSION` | `3.14` |

@@ -359,7 +359,7 @@ async def test_ui_seal_still_requires_session(app, service: PidgeService) -> Non
         )
         assert sealed.status == 302
         location = _header(sealed, "location") or ""
-        assert location.startswith("/p/")
+        assert location.startswith("/sent/")
         sealed_id = int(location.rsplit("/", 1)[-1])
         msg = service.store.get_pidge(sealed_id)
         assert msg.state == "sealed"

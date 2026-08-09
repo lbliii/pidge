@@ -95,8 +95,8 @@ must stay un-nested (see `tests/test_design_system.py`).
 ## Next experience waves
 
 1. ~~**Desk blotter** — replace pillars with Needs-you stack + quiet peeks~~ (#92)
-2. **Out / delivery** — post-seal ceremony (design `sent.html`) vs list-only
-3. **Mail stance badges** — `Invite · needs act` vocabulary
+2. ~~**Out / delivery** — post-seal ceremony~~ (#94)
+3. ~~**Mail stance badges** — `Invite · needs act` vocabulary~~ (#94)
 4. **Calendar / Wall** — residue page mocks aligned with desk peeks
 5. **Agents ritual** — secret drawer “shown once”
 6. **Stamp affix** — cancellation + face on sealed bubble (#78)

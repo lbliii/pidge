@@ -201,6 +201,85 @@ async def test_desk_blotter_ready_to_seal_and_needs_act(app, service: PidgeServi
         assert f'href="/p/{sealed.id}"' in lucy_desk.text
 
 
+async def test_mail_stance_badges_and_delivery_ceremony(app, service: PidgeService) -> None:
+    async with TestClient(app) as client:
+        cookies = await _setup_owner(client)
+        register = await client.get("/register", headers={"Cookie": cookies})
+        await client.post(
+            "/register",
+            data={
+                "_csrf_token": _csrf(register),
+                "username": "lucy",
+                "display_name": "Lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": cookies},
+        )
+
+    owner = service.store.get_user_by_username("owner")
+    draft = service.draft_pidge(
+        owner, intent="Tonight at Nowadays", recipient_names=["Lucy"]
+    )
+    service.enrich_pidge(
+        owner,
+        draft.id,
+        who="Lucy",
+        when="tonight · 7:00 PM",
+        where="Nowadays",
+    )
+    sealed = service.seal_pidge(owner, draft.id)
+
+    async with TestClient(app) as client:
+        login = await client.get("/login")
+        owner_login = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(login),
+                "username": "owner",
+                "password": "password-long",
+            },
+            headers={"Cookie": _cookie(login, "chirp_session") or ""},
+        )
+        owner_cookie = _cookie(owner_login, SESSION_COOKIE)
+        chirp = _cookie(owner_login, "chirp_session") or _cookie(login, "chirp_session")
+        assert owner_cookie is not None
+        owner_cookies = f"{chirp}; {owner_cookie}"
+
+        out = await client.get("/sent", headers={"Cookie": owner_cookies})
+        assert out.status == 200
+        assert "· sealed" in out.text
+        delivery = await client.get(f"/sent/{sealed.id}", headers={"Cookie": owner_cookies})
+        assert delivery.status == 200
+        assert "Sealed · delivered" in delivery.text
+        assert "Lucy" in delivery.text
+        assert "Open thread" in delivery.text
+
+        lucy_login = await client.get("/login")
+        lucy_resp = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(lucy_login),
+                "username": "lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": _cookie(lucy_login, "chirp_session") or ""},
+        )
+        lucy_cookie = _cookie(lucy_resp, SESSION_COOKIE)
+        lucy_chirp = _cookie(lucy_resp, "chirp_session") or _cookie(lucy_login, "chirp_session")
+        assert lucy_cookie is not None
+        lucy_cookies = f"{lucy_chirp}; {lucy_cookie}"
+
+        inbox = await client.get("/inbox", headers={"Cookie": lucy_cookies})
+        assert inbox.status == 200
+        assert "needs act" in inbox.text
+
+        service.record_act(service.store.get_user_by_username("lucy"), sealed.id, "rsvp_yes")
+        inbox2 = await client.get("/inbox", headers={"Cookie": lucy_cookies})
+        assert "Result · accepted" in inbox2.text
+        out2 = await client.get("/sent", headers={"Cookie": owner_cookies})
+        assert "Result · accepted" in out2.text
+
+
 async def test_compose_empty_agent_inbound(app) -> None:
     async with TestClient(app) as client:
         cookies = await _setup_owner(client)
