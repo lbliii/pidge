@@ -53,6 +53,11 @@ class AgentToken:
     expires_at: datetime | None
     revoked_at: datetime | None
     last_used_at: datetime | None = None
+    # Mint-time preference until MCP traffic confirms a seen harness.
+    intended_harness: str | None = None
+    last_harness: str | None = None
+    last_client_name: str | None = None
+    last_client_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

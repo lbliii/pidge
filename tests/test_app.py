@@ -285,13 +285,14 @@ async def test_compose_empty_agent_inbound(app) -> None:
         cookies = await _setup_owner(client)
         page = await client.get("/compose", headers={"Cookie": cookies})
         assert page.status == 200
-        assert "Waiting on your agent" in page.text
+        assert "Connect an agent" in page.text or "Waiting on your agent" in page.text
         assert "draft_pidge" in page.text
         assert "enrich_pidge" in page.text
         assert 'href="/settings/agents"' in page.text
         assert "Draft → enrich → seal" in page.text
         assert "<textarea" not in page.text
         assert "compose-box" not in page.text
+        assert "Compatible harnesses" in page.text
 
 
 async def test_register_second_user_and_directory(app, service: PidgeService) -> None:

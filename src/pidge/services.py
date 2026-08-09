@@ -151,6 +151,7 @@ class PidgeService:
         scopes: frozenset[str] | None = None,
         preset: str | None = None,
         days: int | None = 90,
+        intended_harness: str | None = None,
     ) -> AgentTokenResult:
         if scopes is not None:
             chosen = frozenset(scopes)
@@ -165,12 +166,18 @@ class PidgeService:
             raise ValueError(f"Unknown scopes: {', '.join(sorted(unknown))}")
         secret = f"pidge_at_{secrets.token_urlsafe(32)}"
         expires = datetime.now(UTC) + timedelta(days=days) if days else None
+        from pidge.harness import KNOWN_HARNESS_SLUGS, HARNESS_OTHER
+
+        intent = (intended_harness or "").strip() or None
+        if intent and intent not in KNOWN_HARNESS_SLUGS:
+            intent = HARNESS_OTHER
         token = self.store.create_agent_token(
             user_id=user.id,
             token_hash_value=token_hash(secret),
             label=(label.strip() or "Agent")[:80],
             scopes=chosen,
             expires_at=expires,
+            intended_harness=intent,
         )
         return AgentTokenResult(token, secret)
 
@@ -180,14 +187,58 @@ class PidgeService:
     def revoke_agent_token(self, user: User, token_id: int) -> None:
         self.store.revoke_agent_token(user.id, token_id)
 
-    def verify_agent_token(self, raw_token: str) -> AgentClient | None:
+    def verify_agent_token(
+        self,
+        raw_token: str,
+        *,
+        client_name: str | None = None,
+        client_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> AgentClient | None:
         now = datetime.now(UTC)
         found = self.store.agent_client_for_token(token_hash(raw_token), now)
         if found is None:
             return None
         client, token_id = found
-        self.store.touch_agent_token(token_id, now)
+        harness_kwargs: dict[str, str] = {}
+        if client_name or client_version or user_agent:
+            from pidge.harness import normalize_harness
+
+            slug, name, version = normalize_harness(
+                client_name=client_name,
+                client_version=client_version,
+                user_agent=user_agent,
+            )
+            harness_kwargs["last_harness"] = slug
+            if name:
+                harness_kwargs["last_client_name"] = name
+            if version:
+                harness_kwargs["last_client_version"] = version
+        self.store.touch_agent_token(token_id, now, **harness_kwargs)
         return client
+
+    def record_agent_harness(
+        self,
+        token_id: int,
+        *,
+        client_name: str | None = None,
+        client_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> None:
+        """Update harness attribution for an already-authenticated agent token."""
+        from pidge.harness import normalize_harness
+
+        slug, name, version = normalize_harness(
+            client_name=client_name,
+            client_version=client_version,
+            user_agent=user_agent,
+        )
+        kwargs: dict[str, str] = {"last_harness": slug}
+        if name:
+            kwargs["last_client_name"] = name
+        if version:
+            kwargs["last_client_version"] = version
+        self.store.touch_agent_token(token_id, datetime.now(UTC), **kwargs)
 
     def agent_token_revoked(self, token_id: int) -> bool:
         return self.store.is_agent_token_revoked(token_id)

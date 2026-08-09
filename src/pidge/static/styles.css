@@ -1560,3 +1560,61 @@ a.object-row:hover {
     justify-content: start;
   }
 }
+
+/* Agent status + harness wall (compose / connect) */
+.harness-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.harness-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card-raised);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--duration-fast) var(--ease);
+}
+
+.harness-tile:hover {
+  border-color: var(--bay);
+}
+
+.harness-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: color-mix(in oklab, var(--bay) 18%, white);
+  color: var(--leather);
+}
+
+.agent-status-list {
+  list-style: none;
+  margin: 1rem 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.agent-status-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card-raised);
+}
