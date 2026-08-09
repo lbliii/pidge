@@ -91,6 +91,7 @@ class PidgeMessage:
     seal_user_id: int | None
     created_at: datetime
     updated_at: datetime
+    kind: str = "invite"  # invite | share | ask | fyi | remind | note
     author_name: str = ""
     supersedes_id: int | None = None  # draft successor of a sealed/superseded prior
 

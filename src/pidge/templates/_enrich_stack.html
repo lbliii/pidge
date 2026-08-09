@@ -1,0 +1,73 @@
+{# Expects enrich_facts (list of {label,value}) and enrich_blocks (list of view dicts). #}
+{# Optional: enrich_skel bool for compose loading state. #}
+{% set skel = enrich_skel if enrich_skel else False %}
+{% set facts = enrich_facts if enrich_facts else [] %}
+{% set blocks = enrich_blocks if enrich_blocks else [] %}
+
+<div class="enrich-stack{% if skel %} is-skel{% end %}">
+  {% for block in blocks %}
+    {% if block.variant == "degraded" %}
+    <div class="block-degraded">
+      <p class="block-label">{{ block.label }}</p>
+      <p>{{ block.blurb }}</p>
+      <p class="mono">{{ block.meta }}</p>
+    </div>
+    {% elif block.variant == "place" %}
+    <div class="place-hero{% if block.has_art %} has-art{% else %} is-mono{% end %}">
+      {% if not block.has_art %}
+      <span class="mono-mark" aria-hidden="true">{{ block.mark }}</span>
+      {% end %}
+      <h3>{{ block.title }}</h3>
+      {% if block.blurb %}<p>{{ block.blurb }}</p>{% end %}
+      <p class="hero-meta">{{ block.meta }}</p>
+    </div>
+    {% elif block.variant == "map" %}
+    <div class="map-block">
+      <p class="block-label">Map</p>
+      <div class="map-pin" aria-hidden="true"></div>
+      <strong>{{ block.title }}</strong>
+      {% if block.meta %}<p class="mono">{{ block.meta }}</p>{% end %}
+    </div>
+    {% elif block.variant == "menu" %}
+    <div class="menu-block">
+      <p class="block-label">Menu</p>
+      <strong>{{ block.title }}</strong>
+      {% if block.items %}
+      <ul>
+        {% for item in block.items %}
+        <li>{{ item }}</li>
+        {% end %}
+      </ul>
+      {% elif block.blurb %}
+      <p>{{ block.blurb }}</p>
+      {% end %}
+    </div>
+    {% elif block.variant == "reviews" %}
+    <div class="reviews-block">
+      <p class="block-label">Reviews</p>
+      {% if block.rating %}
+      <div class="stars" aria-label="{{ block.rating }} stars">★★★★☆</div>
+      {% end %}
+      <strong>{{ block.title }}</strong>
+    </div>
+    {% else %}
+    <div class="article-block">
+      <p class="block-label">{{ block.label }}</p>
+      <strong>{{ block.title }}</strong>
+      {% if block.blurb %}<p>{{ block.blurb }}</p>{% end %}
+      {% if block.meta %}<p class="mono">{{ block.meta }}</p>{% end %}
+    </div>
+    {% end %}
+  {% end %}
+
+  {% if facts %}
+  <div class="fact-strip">
+    {% for fact in facts %}
+    <div class="fact">
+      <span class="fact-label">{{ fact["label"] }}</span>
+      <span class="fact-value">{{ fact["value"] }}</span>
+    </div>
+    {% end %}
+  </div>
+  {% end %}
+</div>

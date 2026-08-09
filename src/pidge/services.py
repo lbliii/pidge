@@ -37,6 +37,15 @@ SESSION_TTL = timedelta(days=30)
 SEAL_CHALLENGE_TTL = timedelta(minutes=15)
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{2,31}$")
 REQUIRED_SLOTS = ("who", "when", "where")
+PIDGE_KINDS = frozenset({"invite", "share", "ask", "fyi", "remind", "note"})
+ACTS_BY_KIND: dict[str, frozenset[str]] = {
+    "invite": frozenset({"rsvp_yes", "rsvp_no", "propose_time", "decline"}),
+    "share": frozenset({"ack", "pin"}),
+    "ask": frozenset({"ack", "decline"}),
+    "fyi": frozenset({"ack"}),
+    "remind": frozenset({"ack"}),
+    "note": frozenset({"pin"}),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,12 +317,14 @@ class PidgeService:
         intent: str,
         recipient_names: list[str],
         summary: str = "",
+        kind: str = "invite",
     ) -> PidgeMessage:
         intent = intent.strip()
         if not intent:
             raise ValueError("Intent is required.")
         if not recipient_names:
             raise ValueError("At least one recipient is required.")
+        kind = _validate_kind(kind)
         recipients = [self.resolve_target_name(author, name) for name in recipient_names]
         for recipient in recipients:
             if not self.can_address(
@@ -340,6 +351,7 @@ class PidgeService:
                 seal_user_id=None,
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
+                kind=kind,
             ),
             recipients,
         )
@@ -383,7 +395,7 @@ class PidgeService:
         _set("when", when, none="when" in mark_none)
         _set("where", where, none="where" in mark_none)
         if extras:
-            slots["extras"] = {"status": "ready", "value": extras}
+            slots["extras"] = {"status": "ready", "value": _normalize_extras(extras)}
 
         if flight:
             for step in self.store.list_flight_steps(flight.id):
@@ -566,9 +578,9 @@ class PidgeService:
         msg = self.get_pidge_for(user, pidge_id)
         if msg.state != "sealed":
             raise PermissionError("Acts apply to sealed Pidges only.")
-        allowed = {"rsvp_yes", "rsvp_no", "propose_time", "decline"}
+        allowed = ACTS_BY_KIND.get(msg.kind, ACTS_BY_KIND["invite"])
         if kind not in allowed:
-            raise ValueError(f"Unknown act {kind!r}.")
+            raise ValueError(f"Unknown act {kind!r} for kind {msg.kind!r}.")
         return self.store.add_act(
             Act(
                 id=0,
@@ -632,3 +644,30 @@ def _validate_username(value: str) -> str:
 def _validate_password(password: str) -> None:
     if len(password) < 10:
         raise ValueError("Password must be at least 10 characters.")
+
+
+def _validate_kind(kind: str) -> str:
+    value = (kind or "invite").strip().casefold()
+    if value not in PIDGE_KINDS:
+        raise ValueError(f"Unknown kind {kind!r}.")
+    return value
+
+
+def _normalize_extras(extras: dict[str, Any]) -> dict[str, Any]:
+    """Light-validate extras.blocks; preserve unknown block types and other keys."""
+    out = dict(extras)
+    if "blocks" not in out:
+        return out
+    blocks = out["blocks"]
+    if not isinstance(blocks, list):
+        raise ValueError("extras.blocks must be a list")
+    normalized: list[dict[str, Any]] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            raise ValueError("each extras.blocks item must be a dict")
+        block_type = block.get("type")
+        if not isinstance(block_type, str) or not block_type.strip():
+            raise ValueError("each block must have a string type")
+        normalized.append(dict(block))
+    out["blocks"] = normalized
+    return out

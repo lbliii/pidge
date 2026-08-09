@@ -108,7 +108,9 @@ CREATE TABLE IF NOT EXISTS pidges (
     seal_user_id BIGINT REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    supersedes_id BIGINT REFERENCES pidges(id)
+    supersedes_id BIGINT REFERENCES pidges(id),
+    kind TEXT NOT NULL DEFAULT 'invite'
+        CHECK (kind IN ('invite', 'share', 'ask', 'fyi', 'remind', 'note'))
 );
 
 CREATE TABLE IF NOT EXISTS pidge_recipients (
@@ -656,6 +658,7 @@ class MemoryStore:
                 seal_user_id=msg.seal_user_id,
                 created_at=now,
                 updated_at=now,
+                kind=msg.kind,
                 author_name=author.display_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -695,6 +698,7 @@ class MemoryStore:
                 seal_user_id=None,
                 created_at=msg.created_at,
                 updated_at=datetime.now(UTC),
+                kind=msg.kind,
                 author_name=msg.author_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -721,6 +725,7 @@ class MemoryStore:
                 seal_user_id=seal_user_id,
                 created_at=msg.created_at,
                 updated_at=now,
+                kind=msg.kind,
                 author_name=msg.author_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -744,6 +749,7 @@ class MemoryStore:
                 seal_user_id=msg.seal_user_id,
                 created_at=msg.created_at,
                 updated_at=now,
+                kind=msg.kind,
                 author_name=msg.author_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -767,6 +773,7 @@ class MemoryStore:
                 seal_user_id=msg.seal_user_id,
                 created_at=msg.created_at,
                 updated_at=now,
+                kind=msg.kind,
                 author_name=msg.author_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -792,6 +799,7 @@ class MemoryStore:
                 seal_user_id=msg.seal_user_id,
                 created_at=msg.created_at,
                 updated_at=now,
+                kind=msg.kind,
                 author_name=msg.author_name,
                 supersedes_id=msg.supersedes_id,
             )
@@ -811,6 +819,7 @@ class MemoryStore:
                 seal_user_id=None,
                 created_at=now,
                 updated_at=now,
+                kind=prior.kind,
                 author_name=prior.author_name,
                 supersedes_id=prior.id,
             ),
@@ -1103,6 +1112,19 @@ class PostgresStore:
                 """
                 INSERT INTO schema_migrations (version, name)
                 VALUES (2, 'supersedes_id')
+                ON CONFLICT (version) DO NOTHING
+                """
+            )
+            conn.execute(
+                """
+                ALTER TABLE pidges
+                ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'invite'
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO schema_migrations (version, name)
+                VALUES (3, 'pidge_kind')
                 ON CONFLICT (version) DO NOTHING
                 """
             )
@@ -1509,10 +1531,10 @@ class PostgresStore:
         with self._pool.connection() as conn:
             row = conn.execute(
                 """
-                INSERT INTO pidges (author_id, state, summary, intent, slots, supersedes_id)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s)
+                INSERT INTO pidges (author_id, state, summary, intent, slots, supersedes_id, kind)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s)
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (
                     msg.author_id,
@@ -1521,6 +1543,7 @@ class PostgresStore:
                     msg.intent,
                     json.dumps(msg.slots),
                     msg.supersedes_id,
+                    msg.kind,
                 ),
             ).fetchone()
             author = conn.execute(
@@ -1563,7 +1586,7 @@ class PostgresStore:
                 SET summary = %s, slots = %s::jsonb, intent = %s, updated_at = now()
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (summary, json.dumps(slots), new_intent, pidge_id),
             ).fetchone()
@@ -1578,7 +1601,7 @@ class PostgresStore:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1598,7 +1621,7 @@ class PostgresStore:
                     seal_user_id = %s, updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (digest, now, seal_user_id, now, pidge_id),
             ).fetchone()
@@ -1613,7 +1636,7 @@ class PostgresStore:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1628,7 +1651,7 @@ class PostgresStore:
                 SET state = 'revoked', updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (now, pidge_id),
             ).fetchone()
@@ -1643,7 +1666,7 @@ class PostgresStore:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1658,7 +1681,7 @@ class PostgresStore:
                 SET state = 'revoked', updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (now, pidge_id),
             ).fetchone()
@@ -1675,7 +1698,7 @@ class PostgresStore:
             row = conn.execute(
                 """
                 SELECT id, author_id, state, summary, intent, slots, content_hash,
-                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                       sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 FROM pidges WHERE id = %s FOR UPDATE
                 """,
                 (pidge_id,),
@@ -1690,7 +1713,7 @@ class PostgresStore:
                 SET state = 'superseded', updated_at = %s
                 WHERE id = %s
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (now, pidge_id),
             ).fetchone()
@@ -1706,10 +1729,10 @@ class PostgresStore:
             draft_row = conn.execute(
                 """
                 INSERT INTO pidges
-                    (author_id, state, summary, intent, slots, supersedes_id)
-                VALUES (%s, 'draft', %s, %s, %s::jsonb, %s)
+                    (author_id, state, summary, intent, slots, supersedes_id, kind)
+                VALUES (%s, 'draft', %s, %s, %s::jsonb, %s, %s)
                 RETURNING id, author_id, state, summary, intent, slots, content_hash,
-                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id
+                          sealed_at, seal_user_id, created_at, updated_at, supersedes_id, kind
                 """,
                 (
                     prior_row[1],
@@ -1717,6 +1740,7 @@ class PostgresStore:
                     prior_row[4],
                     json.dumps(slots),
                     prior_row[0],
+                    prior_row[12],
                 ),
             ).fetchone()
             recipients = conn.execute(
@@ -1745,7 +1769,7 @@ class PostgresStore:
             row = conn.execute(
                 """
                 SELECT p.id, p.author_id, p.state, p.summary, p.intent, p.slots, p.content_hash,
-                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id,
+                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id, p.kind,
                        u.display_name
                 FROM pidges p JOIN users u ON u.id = p.author_id
                 WHERE p.id = %s
@@ -1768,7 +1792,7 @@ class PostgresStore:
                 """
                 SELECT DISTINCT p.id, p.author_id, p.state, p.summary, p.intent, p.slots,
                        p.content_hash, p.sealed_at, p.seal_user_id, p.created_at, p.updated_at,
-                       p.supersedes_id, u.display_name
+                       p.supersedes_id, p.kind, u.display_name
                 FROM pidges p
                 JOIN users u ON u.id = p.author_id
                 JOIN pidge_recipients r ON r.pidge_id = p.id
@@ -1784,7 +1808,7 @@ class PostgresStore:
             rows = conn.execute(
                 """
                 SELECT p.id, p.author_id, p.state, p.summary, p.intent, p.slots, p.content_hash,
-                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id,
+                       p.sealed_at, p.seal_user_id, p.created_at, p.updated_at, p.supersedes_id, p.kind,
                        u.display_name
                 FROM pidges p JOIN users u ON u.id = p.author_id
                 WHERE p.author_id = %s AND p.state = %s
@@ -1808,6 +1832,7 @@ class PostgresStore:
             created_at=row[9],
             updated_at=row[10],
             supersedes_id=row[11],
+            kind=row[12] if len(row) > 12 and row[12] is not None else "invite",
             author_name=author_name,
         )
 
@@ -1825,7 +1850,8 @@ class PostgresStore:
             created_at=row[9],
             updated_at=row[10],
             supersedes_id=row[11],
-            author_name=row[12],
+            kind=row[12] if row[12] is not None else "invite",
+            author_name=row[13],
         )
 
     def recipients_for(self, pidge_id: int) -> tuple[PidgeRecipient, ...]:

@@ -227,7 +227,8 @@ async def test_sealed_invite_appears_in_recipient_inbox_and_rsvp(
 
         thread = await client.get(f"/p/{pidge_id}", headers={"Cookie": lucy_cookies})
         assert thread.status == 200
-        assert "RSVP yes" in thread.text
+        assert "Accept" in thread.text
+        assert 'value="rsvp_yes"' in thread.text
         rsvp = await client.post(
             f"/p/{pidge_id}/act",
             data={"_csrf_token": _csrf(thread), "kind": "rsvp_yes"},

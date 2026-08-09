@@ -109,7 +109,7 @@ async def test_compose_empty_agent_inbound(app) -> None:
         assert "draft_pidge" in page.text
         assert "enrich_pidge" in page.text
         assert 'href="/settings/agents"' in page.text
-        assert "Agent inbound" in page.text
+        assert "Draft → enrich → seal" in page.text
         assert "<textarea" not in page.text
         assert "compose-box" not in page.text
 

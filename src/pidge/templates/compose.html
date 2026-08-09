@@ -9,7 +9,7 @@
 {% block page_content %}
 <div class="page-head">
   <div>
-    <p class="kicker">Agent inbound → fly → seal</p>
+    <p class="kicker">Draft → enrich → seal</p>
     <h1>Draft #{{ message.id }}</h1>
   </div>
 </div>
@@ -17,6 +17,11 @@
 {% if message.supersedes_id %}
 <p class="hint">Superseding sealed <a href="/p/{{ message.supersedes_id }}">#{{ message.supersedes_id }}</a> — amend here, then seal again.</p>
 {% end %}
+<div class="steps-rail" aria-label="Compose progress">
+  <span class="step-chip is-done">1 Draft</span>
+  <span class="step-chip{% if not can_seal %} is-active{% else %} is-done{% end %}">2 Enrich</span>
+  <span class="step-chip{% if can_seal %} is-active{% end %}">3 Seal</span>
+</div>
 {# sse-eager-connect: intentional — live enrich while the draft is open #}
 <div
   class="thread-layout"
@@ -27,6 +32,14 @@
   {% end %}
 >
   <div class="compose-panel">
+    <div class="kind-row">
+      <span class="badge {{ message.kind if message.kind else 'invite' }}">{{ kind_label if kind_label else "Invite" }} · draft</span>
+      {% if message.state == "draft" and not can_seal %}
+      <span class="badge enriching">Enriching</span>
+      {% elif can_seal %}
+      <span class="badge ready">Ready to seal</span>
+      {% end %}
+    </div>
     <p class="hint">Intent</p>
     <p><strong>{{ message.intent }}</strong></p>
     <p class="hint">Summary</p>
@@ -46,14 +59,9 @@
             {% if slot.value %}<span class="mono">{{ slot.value }}</span>{% elif slot.status == "none" %}<span class="mono">marked none</span>{% else %}<span class="mono">waiting</span>{% end %}
           </li>
           {% end %}
-          {% if message.slots.get("extras") %}
-          <li class="slot-row is-{{ message.slots['extras'].status }}">
-            <code>extras</code>
-            <span class="slot-status">{{ message.slots['extras'].status }}</span>
-            <span class="mono">{{ message.slots['extras'].value }}</span>
-          </li>
-          {% end %}
         </ul>
+        <p class="hint">Enrich preview</p>
+        {% include "_enrich_stack.html" %}
         {% if message.state == "draft" and can_seal %}
         <p class="hint seal-ready">Slots ready — seal to send.</p>
         <form method="post" action="/compose/{{ message.id }}/seal">
@@ -79,9 +87,9 @@
   <div sse-swap="flight_rail" hx-target="this" class="flight-rail-sink">
     {% block flight_rail %}
     <aside class="flight-rail" id="flight-rail">
-      <h2>Flight</h2>
+      <h2>Enriching</h2>
       {% if flight %}
-        <p class="hint">State: {{ flight.state }}</p>
+        <p class="hint">State: {% if flight.state == "flying" %}enriching{% elif flight.state == "done" %}enriched{% else %}{{ flight.state }}{% end %}</p>
         {% if flight.state == "flying" %}
         <div class="flight-track" aria-hidden="true"><span></span></div>
         {% end %}
@@ -98,7 +106,7 @@
         <p class="hint">Live via agent <code>enrich_pidge</code> · SSE</p>
         {% end %}
       {% else %}
-        <p class="hint">No flight yet.</p>
+        <p class="hint">No enriching pass yet.</p>
       {% end %}
     </aside>
     {% end %}
