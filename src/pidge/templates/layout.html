@@ -21,7 +21,7 @@
       {% if viewer %}
       <nav class="nav" aria-label="Primary">
         <a href="/" {% if current_path == "/" %}aria-current="page"{% end %}>Desk</a>
-        <a href="/inbox" {% if current_path == "/inbox" or current_path == "/sent" %}aria-current="page"{% end %}>Mail</a>
+        <a href="/inbox" {% if current_path == "/inbox" or current_path.startswith("/sent") %}aria-current="page"{% end %}>Mail</a>
         <a href="/people" {% if current_path.startswith("/people") or current_path in ("/contacts", "/directory") %}aria-current="page"{% end %}>People</a>
         <details class="nav-account"{% if current_path.startswith("/settings") or current_path in ("/calendar", "/wall") %} open{% end %}>
           <summary>Account</summary>

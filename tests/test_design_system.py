@@ -147,6 +147,25 @@ def test_styles_css_keeps_primitives_top_level() -> None:
         assert found[name] == 0, f"{name} must be top-level (depth 0), got {found[name]}"
 
 
+def test_allowed_hosts_include_public_origin_and_railway_domains(monkeypatch) -> None:
+    from pidge.web import _allowed_hosts
+
+    monkeypatch.setenv("RAILWAY_PUBLIC_DOMAIN", "pidge.lol")
+    monkeypatch.setenv("RAILWAY_STATIC_URL", "web-production-04a7d.up.railway.app")
+    config = PidgeConfig(
+        env="production",
+        debug=False,
+        database_url="postgresql://example",
+        secret_key="x" * 48,
+        bootstrap_token="y" * 32,
+        public_origin="https://pidge.lol",
+        loft_name="Pidge Loft",
+    )
+    hosts = _allowed_hosts(config)
+    assert "pidge.lol" in hosts
+    assert "web-production-04a7d.up.railway.app" in hosts
+
+
 @pytest.mark.asyncio
 async def test_mail_segmented_facet_markup(app) -> None:
     async with TestClient(app) as client:
@@ -162,6 +181,7 @@ async def test_mail_segmented_facet_markup(app) -> None:
         sent = await client.get("/sent", headers={"Cookie": cookies})
         assert sent.status == 200
         assert 'aria-current="page">Out</a>' in sent.text
+        assert "Nothing sealed yet" in sent.text or "empty-state" in sent.text
 
 
 @pytest.mark.asyncio

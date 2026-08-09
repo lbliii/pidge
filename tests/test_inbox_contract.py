@@ -211,7 +211,10 @@ async def test_sealed_invite_appears_in_recipient_inbox_and_rsvp(
             headers={"Cookie": owner_cookies},
         )
         assert seal.status == 302
-        assert f"/p/{pidge_id}" in (_header(seal, "location") or "")
+        assert f"/sent/{pidge_id}" in (_header(seal, "location") or "")
+        delivery = await client.get(f"/sent/{pidge_id}", headers={"Cookie": owner_cookies})
+        assert delivery.status == 200
+        assert "Sealed · delivered" in delivery.text
 
         # Draft must not leak to Lucy before seal — already sealed here; inbox shows it.
         inbox = await client.get("/inbox", headers={"Cookie": lucy_cookies})
@@ -269,6 +272,6 @@ async def test_draft_not_visible_in_recipient_inbox(app, service: PidgeService) 
         inbox = await client.get("/inbox", headers={"Cookie": lucy_cookies})
         assert inbox.status == 200
         assert "Secret draft" not in inbox.text
-        assert "No sealed Pidges" in inbox.text
+        assert "Quiet inbox" in inbox.text or "No sealed Pidges" in inbox.text
         lucy = service.store.get_user_by_username("lucy")
         assert service.store.list_inbox(lucy.id) == ()

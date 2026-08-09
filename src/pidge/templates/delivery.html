@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}Delivered — Pidge{% end %}
+{% block page_content %}
+<div class="sent-hero">
+  <p class="kicker">Sealed · delivered</p>
+  <h1>{{ hero_title }}</h1>
+  <p>
+    Sealed {{ kind_label|lower }} <span class="mono">pidge:{{ message.id }}</span>
+    is with {{ recipient_line }}. You’ll see the act land in your thread.
+  </p>
+  <div class="actions" style="justify-content: center; display: flex; flex-wrap: wrap; gap: 0.65rem">
+    <a class="btn btn-seal" href="/p/{{ message.id }}">Open thread</a>
+    <a class="btn btn-ghost" href="/sent">Out box</a>
+  </div>
+</div>
+
+<div class="bubble" style="max-width: 36rem; margin: 0 auto 3rem">
+  <header>
+    <span class="from">Delivery</span>
+    <span class="verified">Sealed</span>
+  </header>
+  <ul class="timeline">
+    {% for step in timeline %}
+    <li><time>{{ step['time'] }}</time><span>{{ step['text'] }}</span></li>
+    {% end %}
+  </ul>
+</div>
+{% end %}

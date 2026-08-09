@@ -14,24 +14,27 @@
   <a href="/sent" class="is-active" aria-current="page">Out</a>
 </div>
 
-{% if messages %}
+{% if rows %}
 <div class="inbox">
-  {% for m in messages %}
-  <a class="msg" href="/p/{{ m.id }}">
-    <div class="msg-avatar seal">{{ (m.summary or "?")[:1] }}</div>
+  {% for row in rows %}
+  <a class="msg" href="{{ row['href'] }}">
+    <div class="msg-avatar seal">{{ row['avatar'] }}</div>
     <div>
-      <strong>{{ m.summary }}</strong>
-      <div class="preview">{% if m.intent %}{{ m.intent }}{% else %}sealed{% end %}</div>
-      {% set k = m.kind if m.kind else "invite" %}
-      <span class="badge {{ k }}">{{ k.replace("_", " ").title() }} · {{ m.state }}</span>
+      <strong>{{ row['title'] }}</strong>
+      <div class="preview">{{ row['preview'] }}</div>
+      <span class="badge{% if row['badge_class'] %} {{ row['badge_class'] }}{% end %}">{{ row['badge'] }}</span>
     </div>
-    <time{% if m.sealed_at %} datetime="{{ m.sealed_at.isoformat() }}"{% end %}>
-      {% if m.sealed_at %}{{ m.sealed_at.strftime("%-I:%M %p") }}{% elif m.updated_at %}{{ m.updated_at.strftime("%-I:%M %p") }}{% else %}—{% end %}
+    <time{% if row['time_iso'] %} datetime="{{ row['time_iso'] }}"{% end %}>
+      {% if row['time'] %}{{ row['time'] }}{% else %}—{% end %}
     </time>
   </a>
   {% end %}
 </div>
 {% else %}
-<p class="hint">Nothing sealed yet.</p>
+<div class="empty-state">
+  <h3>Nothing sealed yet</h3>
+  <p>When you seal a packet, it lands here on Out — and opens a delivery beat.</p>
+  <a class="btn btn-seal" href="/compose">Open compose</a>
+</div>
 {% end %}
 {% end %}

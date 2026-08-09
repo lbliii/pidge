@@ -9,7 +9,7 @@ Default (no network): MemoryStore + Chirp TestClient.
 Against a running loft (local serve or Railway):
 
     uv run python scripts/dogfood_nowadays.py \\
-      --base-url https://web-production-04a7d.up.railway.app \\
+      --base-url https://pidge.lol \\
       --bootstrap-token \"$PIDGE_BOOTSTRAP_TOKEN\" \\
       --owner-password '…' --lucy-password '…'
 
@@ -18,7 +18,7 @@ instead of calling /setup. Register Lucy when she is missing.
 
 Agent MCP curl recipe (mint a token under Settings → Agents first)::
 
-    BASE=https://web-production-04a7d.up.railway.app   # or http://127.0.0.1:8000
+    BASE=https://pidge.lol   # or http://127.0.0.1:8000
     TOKEN=pidge_at_…
 
     curl -sS \"$BASE/mcp\" -H \"Authorization: Bearer $TOKEN\" \\
