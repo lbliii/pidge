@@ -33,6 +33,7 @@ Shell: Desk · Mail · People · Account
 | **Object** | Projection of one sealed Pidge | `/p/{id}` | thread-layout + bubble | recipient-bar, kind acts, enrich stack, (later) stamp + cancellation | sealed / revoked / superseded / acted |
 | **Residue** | Quiet aftermath of seals | `/calendar` · `/wall` | object lists | `.object-row`, pin / hold cards | empty residue |
 | **Rituals** | Trust + delight under Account | `/settings/agents` · stamps (later) | preset / album | `.preset-card`, secret drawer, stamp grid | mint once / revoked |
+| **Discovery** | Public agent onboarding (no credentials) | `/connect` · `/llms.txt` · `/.well-known/mcp*` | connect brief + plain text/JSON | lede, compose-panel, tool list | guest |
 
 ### Cross-links (intentional)
 
@@ -41,6 +42,7 @@ Shell: Desk · Mail · People · Account
 - People → Compose addressing (via agents); introductions stay on People
 - Object → Calendar hold / Wall pin (acts leave residue)
 - Account → Agents (MCP), Stamps (album), Calendar, Wall
+- Discovery → `/connect` · `/llms.txt` · MCP well-known (public; mint still behind Agents)
 
 ---
 
@@ -100,6 +102,7 @@ must stay un-nested (see `tests/test_design_system.py`).
 4. **Calendar / Wall** — residue page mocks aligned with desk peeks
 5. **Agents ritual** — secret drawer “shown once”
 6. **Stamp affix** — cancellation + face on sealed bubble (#78)
+7. ~~**Agent discovery** — `/connect`, `llms.txt`, MCP well-known cards~~
 
 ---
 

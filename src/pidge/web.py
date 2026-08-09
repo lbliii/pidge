@@ -27,8 +27,22 @@ from pidge.config import (
     AUTOPILOT_TOKEN_TTL_DAYS,
     DEFAULT_TOKEN_PRESET,
     DESK_TOKEN_TTL_DAYS,
-    infer_preset,
     PidgeConfig,
+    infer_preset,
+)
+from pidge.discovery import (
+    DISCOVERY_CACHE_CONTROL,
+    DISCOVERY_CORS,
+    llms_full_txt,
+    llms_txt,
+    mcp_manifest,
+    resolve_public_origin,
+    robots_txt,
+    security_txt,
+    server_card,
+)
+from pidge.discovery import (
+    dumps as discovery_dumps,
 )
 from pidge.models import AgentClient, User
 from pidge.services import PidgeService
@@ -349,6 +363,89 @@ def create_app(
         }
 
     # --- HTTP routes -------------------------------------------------------
+
+    def _loft_origin(request: Request) -> str:
+        return resolve_public_origin(config.public_origin, request.url)
+
+    def _loft_display_name() -> str:
+        settings = database.settings()
+        return settings.name if settings else config.loft_name
+
+    def _discovery_json(payload: dict[str, Any]) -> Response:
+        return Response(
+            discovery_dumps(payload),
+            content_type="application/json; charset=utf-8",
+            headers=(
+                ("Cache-Control", DISCOVERY_CACHE_CONTROL),
+                ("Access-Control-Allow-Origin", DISCOVERY_CORS),
+                ("X-Content-Type-Options", "nosniff"),
+            ),
+        )
+
+    def _discovery_text(body: str, *, content_type: str) -> Response:
+        return Response(
+            body if body.endswith("\n") else f"{body}\n",
+            content_type=content_type,
+            headers=(
+                ("Cache-Control", DISCOVERY_CACHE_CONTROL),
+                ("Access-Control-Allow-Origin", DISCOVERY_CORS),
+                ("X-Content-Type-Options", "nosniff"),
+            ),
+        )
+
+    @app.route("/.well-known/mcp/server-card.json")
+    def mcp_server_card(request: Request):
+        origin = _loft_origin(request)
+        return _discovery_json(server_card(origin, loft_name=_loft_display_name()))
+
+    @app.route("/.well-known/mcp")
+    def mcp_well_known_manifest(request: Request):
+        return _discovery_json(mcp_manifest(_loft_origin(request)))
+
+    @app.route("/.well-known/mcp.json")
+    def mcp_well_known_manifest_alias(request: Request):
+        # Early clients sometimes probe .json; same body as /.well-known/mcp.
+        return _discovery_json(mcp_manifest(_loft_origin(request)))
+
+    @app.route("/.well-known/security.txt")
+    def well_known_security(request: Request):
+        return _discovery_text(
+            security_txt(_loft_origin(request)),
+            content_type="text/plain; charset=utf-8",
+        )
+
+    @app.route("/llms.txt")
+    def llms_document(request: Request):
+        return _discovery_text(
+            llms_txt(_loft_origin(request), loft_name=_loft_display_name()),
+            content_type="text/plain; charset=utf-8",
+        )
+
+    @app.route("/llms-full.txt")
+    def llms_full_document(request: Request):
+        return _discovery_text(
+            llms_full_txt(_loft_origin(request), loft_name=_loft_display_name()),
+            content_type="text/plain; charset=utf-8",
+        )
+
+    @app.route("/robots.txt")
+    def robots_document(request: Request):
+        return _discovery_text(
+            robots_txt(_loft_origin(request)),
+            content_type="text/plain; charset=utf-8",
+        )
+
+    @app.route("/connect", referenced=True, template="connect.html")
+    def connect_page(request: Request):
+        origin = _loft_origin(request)
+        name = _loft_display_name()
+        return render(
+            request,
+            "connect.html",
+            mcp_url=f"{origin}/mcp",
+            origin=origin,
+            tools=server_card(origin, loft_name=name)["tools"],
+        )
 
     @app.route("/")
     def index(request: Request):
@@ -784,15 +881,7 @@ def create_app(
         return Redirect("/wall")
 
     def _mcp_url(request: Request) -> str:
-        if config.public_origin:
-            return f"{config.public_origin}/mcp"
-        url = request.url
-        if isinstance(url, str):
-            parsed = urlparse(url)
-            scheme = parsed.scheme or "http"
-            netloc = parsed.netloc or "127.0.0.1:8000"
-            return f"{scheme}://{netloc}/mcp"
-        return f"{url.scheme}://{url.netloc}/mcp"
+        return f"{_loft_origin(request)}/mcp"
 
     @app.route("/settings/agents")
     def agents_settings(request: Request):
@@ -929,7 +1018,7 @@ def _enrich_view(msg: Any, *, skel: bool = False) -> dict[str, Any]:
                     "blurb": str(
                         block.get("blurb")
                         or block.get("detail")
-                        or "Couldn’t fetch — seal still OK."
+                        or "Couldn't fetch — seal still OK."
                     ),
                     "meta": "skipped",
                 }
@@ -1238,10 +1327,10 @@ def _delivery_context(service: PidgeService, msg: Any) -> dict[str, Any]:
     names = [r.display_name for r in recipients if getattr(r, "display_name", None)]
     primary = names[0] if names else "your recipient"
     if len(names) > 1:
-        hero = f"On their desks"
+        hero = "On their desks"
         lead_names = ", ".join(names[:-1]) + f" and {names[-1]}"
     else:
-        hero = f"On {primary}’s desk"
+        hero = f"On {primary}'s desk"
         lead_names = primary
     acts = service.store.list_acts(msg.id)
     waiting = "Waiting on act…" if not acts else f"Act landed · {_act_stance_label(acts)}"
