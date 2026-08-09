@@ -82,8 +82,9 @@ under a shared page-head.
 
 - **In the loft** — same-deployment members; **visible** for discovery; **mail
   only after an accepted introduction** (permission gate, not optional glue).
-- **Beyond the loft** — external handles agents may address only after the
-  human adds them.
+- **Beyond the loft** — external handles agents may address on this loft only
+  after the human adds them. Address book ≠ delivery; cross-loft delivery is
+  federation (later).
 - **Introductions tray** — pending connection requests with **names**, never
   raw user IDs; Accept / Decline / Block.
 - **Add an address** — bounded form panel on the Beyond facet only.

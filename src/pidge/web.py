@@ -202,7 +202,8 @@ def create_app(
     @app.tool(
         "list_contacts",
         description=(
-            "List the owner's address book (who you may mail). "
+            "List the owner's address book (who you may mail; "
+            "local addressing only — not cross-loft delivery). "
             "Includes accepted loft connections and external contacts. "
             "Loft mates appear here only after an introduction is accepted."
         ),
@@ -321,7 +322,13 @@ def create_app(
             ],
         }
 
-    @app.tool("add_contact", description="Add an external contact to the address book.")
+    @app.tool(
+        "add_contact",
+        description=(
+            "Add an external contact for local addressing on this loft "
+            "(not cross-loft delivery)."
+        ),
+    )
     def add_contact_tool(handle: str, display_name: str = "") -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
         contact = service.add_external_contact(owner, handle=handle, display_name=display_name)

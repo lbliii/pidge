@@ -96,6 +96,8 @@ async def test_llms_txt_is_public(app) -> None:
         assert "https://pidge.lol/mcp" in response.text
         assert "/connect" in response.text
         assert "Autopilot" in response.text
+        assert "## Addressing" in response.text
+        assert "Address book ≠ delivery" in response.text
 
 
 @pytest.mark.asyncio
@@ -106,6 +108,8 @@ async def test_llms_full_lists_tools(app) -> None:
         for tool in MCP_TOOLS:
             assert tool["name"] in response.text
         assert "tools/list" in response.text
+        assert "not cross-loft delivery" in response.text
+        assert "address book is local only" in response.text
 
 
 @pytest.mark.asyncio
@@ -159,6 +163,8 @@ async def test_connect_page_is_public(app) -> None:
         assert "/settings/agents" in page.text
         assert "draft_pidge" in page.text
         assert 'href="/llms.txt"' in page.text
+        assert "not cross-loft delivery" in page.text
+        assert "Addressing" in page.text
 
 
 @pytest.mark.asyncio

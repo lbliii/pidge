@@ -105,7 +105,9 @@ Second loft member: the script registers **Lucy** via `/register` (or logs her i
 ## Addressing
 
 - **Same loft:** People → In the loft; message anyone on this deployment
-- **Beyond the loft:** People → Beyond the loft; add the handle before agents can address them
+- **Beyond the loft:** People → Beyond the loft; add handles agents may address
+  locally on drafts. Address book ≠ delivery — sealed packets stay loft-local
+  until federation
 
 ## Railway
 
