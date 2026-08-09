@@ -26,7 +26,7 @@ Shell: Desk · Mail · People · Account
 | Layer | Job | Route family | Layout family | Canonical components | States |
 |-------|-----|--------------|---------------|----------------------|--------|
 | **Shell** | Orient; ≤4 primary destinations | all authenticated | `.topbar` · `.nav` · `.nav-account` | brand, primary links, Account drawer | viewer / guest |
-| **Desk** | Route attention — one stack for decisions | `/` | blotter (mock) → pillars (prod until next wave) | `.needs-row`, quiet peeks | empty / needs seal / enriching / needs act |
+| **Desk** | Route attention — one stack for decisions | `/` | blotter · Needs you + quiet peeks | `.needs-row`, `.quiet-strip`, hold/pin peeks | empty / needs seal / enriching / needs act |
 | **Mail** | Browse sealed traffic | `/inbox` · `/sent` | page-head + `.segmented` + list | `.segmented`, `.msg` / `.object-row`, `.empty-state` | In · Out; empty loft |
 | **People** | Address graph for agents + humans | `/people` · `/people/address-book` | page-head + `.segmented` + folio | `.segmented`, `.person-row`, introductions tray, add-address panel | loft empty; pending intro; address book empty |
 | **Workflow** | Build a packet until seal | `/compose`, `/compose/{id}` | compose-panel + enriching rail | slots, `.enrich-stack`, `.flight-rail`, seal CTA | draft / enriching / ready / blocked |
@@ -92,9 +92,9 @@ must stay un-nested (see `tests/test_design_system.py`).
 
 ---
 
-## Next experience waves (do not expand this PR)
+## Next experience waves
 
-1. **Desk blotter** — replace pillars with Needs-you stack + quiet peeks
+1. ~~**Desk blotter** — replace pillars with Needs-you stack + quiet peeks~~ (#92)
 2. **Out / delivery** — post-seal ceremony (design `sent.html`) vs list-only
 3. **Mail stance badges** — `Invite · needs act` vocabulary
 4. **Calendar / Wall** — residue page mocks aligned with desk peeks

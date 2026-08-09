@@ -90,14 +90,115 @@ async def test_setup_login_desk(app) -> None:
         assert desk.status == 200
         assert "Good day" in desk.text
         assert "Owner" in desk.text
-        assert 'class="hero"' in desk.text
+        assert 'class="hero' in desk.text
         assert "floating-seal" in desk.text
-        assert "Mail that" in desk.text
+        assert "What needs" in desk.text
+        assert 'class="blotter"' in desk.text
+        assert "Needs you" in desk.text
+        assert "pillars-4" not in desk.text
+        assert "Nothing needs you" in desk.text
         assert 'href="/compose"' in desk.text
-        assert 'href="/inbox"' in desk.text
         assert 'href="/settings/agents"' in desk.text
         assert 'class="dictate"' not in desk.text
         assert "<textarea" not in desk.text
+
+
+async def test_desk_blotter_ready_to_seal_and_needs_act(app, service: PidgeService) -> None:
+    async with TestClient(app) as client:
+        cookies = await _setup_owner(client)
+        register = await client.get("/register", headers={"Cookie": cookies})
+        await client.post(
+            "/register",
+            data={
+                "_csrf_token": _csrf(register),
+                "username": "lucy",
+                "display_name": "Lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": cookies},
+        )
+
+    owner = service.store.get_user_by_username("owner")
+    draft = service.draft_pidge(
+        owner,
+        intent="Tonight at Nowadays with Lucy",
+        recipient_names=["Lucy"],
+    )
+    service.enrich_pidge(
+        owner,
+        draft.id,
+        who="Lucy",
+        when="tonight · 7:00 PM",
+        where="Nowadays, Brooklyn",
+    )
+    sealed = service.seal_pidge(owner, draft.id)
+
+    ready = service.draft_pidge(
+        owner,
+        intent="Coffee with Lucy",
+        recipient_names=["Lucy"],
+    )
+    service.enrich_pidge(
+        owner,
+        ready.id,
+        who="Lucy",
+        when="tomorrow · 10:00 AM",
+        where="Cafe",
+    )
+    pending = service.draft_pidge(
+        owner,
+        intent="Brunch with Sam",
+        recipient_names=["Lucy"],
+    )
+
+    async with TestClient(app) as client:
+        login = await client.get("/login")
+        owner_login = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(login),
+                "username": "owner",
+                "password": "password-long",
+            },
+            headers={"Cookie": _cookie(login, "chirp_session") or ""},
+        )
+        owner_cookie = _cookie(owner_login, SESSION_COOKIE)
+        chirp = _cookie(owner_login, "chirp_session") or _cookie(login, "chirp_session")
+        assert owner_cookie is not None
+        owner_cookies = f"{chirp}; {owner_cookie}"
+
+        desk = await client.get("/", headers={"Cookie": owner_cookies})
+        assert desk.status == 200
+        assert "Ready to seal" in desk.text
+        assert f'href="/compose/{ready.id}"' in desk.text
+        assert "Brunch with Sam" in desk.text or "Brunch" in desk.text
+        assert "Enriching" in desk.text
+        assert f'href="/compose/{pending.id}"' in desk.text
+        assert "Coming up" in desk.text
+        assert "Nowadays" in desk.text
+        assert "pillars-4" not in desk.text
+
+        lucy_login_page = await client.get("/login")
+        lucy_resp = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(lucy_login_page),
+                "username": "lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": _cookie(lucy_login_page, "chirp_session") or ""},
+        )
+        lucy_cookie = _cookie(lucy_resp, SESSION_COOKIE)
+        lucy_chirp = _cookie(lucy_resp, "chirp_session") or _cookie(
+            lucy_login_page, "chirp_session"
+        )
+        assert lucy_cookie is not None
+        lucy_cookies = f"{lucy_chirp}; {lucy_cookie}"
+
+        lucy_desk = await client.get("/", headers={"Cookie": lucy_cookies})
+        assert lucy_desk.status == 200
+        assert "needs act" in lucy_desk.text
+        assert f'href="/p/{sealed.id}"' in lucy_desk.text
 
 
 async def test_compose_empty_agent_inbound(app) -> None:

@@ -357,14 +357,7 @@ def create_app(
         user = viewer(request)
         if user is None:
             return Redirect("/login")
-        return render(
-            request,
-            "desk.html",
-            drafts=service.store.list_drafts(user.id),
-            inbox=service.store.list_inbox(user.id)[:8],
-            holds=service.store.list_holds(user.id)[:5],
-            pins=service.store.list_pins(user.id)[:5],
-        )
+        return render(request, "desk.html", **_desk_context(service, user))
 
     @app.route("/setup", referenced=True, template="setup.html")
     def setup_page(request: Request):
@@ -1080,6 +1073,125 @@ def _gate(request: Request, require_human: Any) -> User | Redirect:
         return require_human(request)
     except PermissionError:
         return Redirect("/login")
+
+
+def _desk_context(service: PidgeService, user: User) -> dict[str, Any]:
+    """Attention blotter: Needs you first, quiet residue below."""
+    drafts = service.store.list_drafts(user.id)
+    inbox = service.store.list_inbox(user.id)
+    holds = service.store.list_holds(user.id)[:5]
+    pins = service.store.list_pins(user.id)[:5]
+
+    ready: list[dict[str, Any]] = []
+    enriching: list[dict[str, Any]] = []
+    for draft in drafts:
+        title = draft.summary or draft.intent or "Untitled draft"
+        if _can_seal(draft):
+            ready.append(
+                {
+                    "href": f"/compose/{draft.id}",
+                    "title": title,
+                    "why": "Slots ready — seal to send",
+                    "badge": "Ready to seal",
+                    "badge_class": "ready",
+                    "mark": "!",
+                    "mark_class": "warn",
+                    "action": "Seal",
+                    "time": None,
+                }
+            )
+        else:
+            reason = _seal_block_reason(draft) or "Draft → Enrich in progress"
+            enriching.append(
+                {
+                    "href": f"/compose/{draft.id}",
+                    "title": title,
+                    "why": reason.replace("Seal blocked — waiting on ", "Waiting on "),
+                    "badge": "Enriching",
+                    "badge_class": "enriching",
+                    "mark": "…",
+                    "mark_class": "agent",
+                    "action": None,
+                    "time": "now",
+                }
+            )
+
+    needs_act: list[dict[str, Any]] = []
+    mail_peek: list[dict[str, Any]] = []
+    for msg in inbox:
+        acts = tuple(a for a in service.store.list_acts(msg.id) if a.actor_user_id == user.id)
+        kind = msg.kind or "invite"
+        kind_label = _kind_label(kind)
+        title = msg.summary or msg.intent or "Sealed Pidge"
+        author = msg.author_name or "Someone"
+        stamp = _format_desk_time(msg.sealed_at or msg.updated_at)
+        if _message_needs_act(kind, acts):
+            needs_act.append(
+                {
+                    "href": f"/p/{msg.id}",
+                    "title": title,
+                    "why": f"From {author} — needs your act",
+                    "badge": f"{kind_label} · needs act",
+                    "badge_class": kind if kind in {"invite", "share"} else "kind",
+                    "mark": (author[:1] or "?").upper(),
+                    "mark_class": "",
+                    "action": None,
+                    "time": stamp,
+                }
+            )
+        else:
+            stance = _act_stance_label(acts)
+            mail_peek.append(
+                {
+                    "href": f"/p/{msg.id}",
+                    "title": title,
+                    "preview": f"{author} · {stance}",
+                    "badge": f"Result · {stance}",
+                    "mark": (author[:1] or "?").upper(),
+                    "time": stamp,
+                }
+            )
+
+    needs = [*ready, *enriching, *needs_act]
+    return {
+        "needs": needs,
+        "mail_peek": mail_peek[:4],
+        "holds": holds,
+        "pins": pins,
+    }
+
+
+def _message_needs_act(kind: str, acts: tuple[Any, ...]) -> bool:
+    kinds = {a.kind for a in acts}
+    if kind == "invite":
+        return not kinds.intersection({"rsvp_yes", "rsvp_no", "decline", "maybe"})
+    if kind == "share":
+        return not kinds.intersection({"ack", "pin"})
+    return not kinds.intersection({"ack", "pin", "rsvp_yes", "rsvp_no", "decline"})
+
+
+def _act_stance_label(acts: tuple[Any, ...]) -> str:
+    kinds = {a.kind for a in acts}
+    if "rsvp_yes" in kinds:
+        return "accepted"
+    if "rsvp_no" in kinds or "decline" in kinds:
+        return "declined"
+    if "maybe" in kinds:
+        return "maybe"
+    if "pin" in kinds:
+        return "pinned"
+    if "ack" in kinds:
+        return "acked"
+    return "sealed"
+
+
+def _format_desk_time(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        return value.strftime("%-I:%M %p")
+    except (AttributeError, ValueError, TypeError):
+        return None
 
 
 def _people_loft_context(service: PidgeService, user: User, *, error: str | None) -> dict[str, Any]:
