@@ -404,6 +404,75 @@ async def test_people_hub_introduce_accept_and_address_book(app, service: PidgeS
         assert "Pending" in added.text
 
 
+async def test_directory_accept_failure_surfaces_alert(app, service: PidgeService) -> None:
+    """#99: failed accept re-renders people with an alert, not a silent redirect."""
+    async with TestClient(app) as client:
+        owner_cookies = await _setup_owner(client)
+        register = await client.get("/register", headers={"Cookie": owner_cookies})
+        await client.post(
+            "/register",
+            data={
+                "_csrf_token": _csrf(register),
+                "username": "lucy",
+                "display_name": "Lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": owner_cookies},
+        )
+        people = await client.get("/people", headers={"Cookie": owner_cookies})
+        await client.post(
+            "/directory/connect",
+            data={"_csrf_token": _csrf(people), "username": "lucy"},
+            headers={"Cookie": owner_cookies},
+        )
+        lucy = service.store.get_user_by_username("lucy")
+        request_id = service.store.list_connection_requests(lucy.id)[0].id
+
+        # Sender cannot accept; must surface the PermissionError.
+        failed = await client.post(
+            "/directory/accept",
+            data={"_csrf_token": _csrf(people), "request_id": str(request_id)},
+            headers={"Cookie": owner_cookies},
+        )
+        assert failed.status == 200
+        assert 'class="alert alert-danger"' in failed.text
+        assert "Cannot accept this connection request." in failed.text
+        assert service.store.list_connection_requests(lucy.id)[0].status == "pending"
+
+
+async def test_wall_pin_failure_surfaces_alert(app, service: PidgeService) -> None:
+    """#99: failed pin re-renders wall with an alert, not a silent redirect."""
+    async with TestClient(app) as client:
+        cookies = await _setup_owner(client)
+        register = await client.get("/register", headers={"Cookie": cookies})
+        await client.post(
+            "/register",
+            data={
+                "_csrf_token": _csrf(register),
+                "username": "lucy",
+                "display_name": "Lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": cookies},
+        )
+        owner = service.store.get_user_by_username("owner")
+        draft = service.draft_pidge(
+            owner, intent="Draft that must not pin", recipient_names=["Lucy"]
+        )
+
+        wall = await client.get("/wall", headers={"Cookie": cookies})
+        assert wall.status == 200
+        failed = await client.post(
+            "/wall/pin",
+            data={"_csrf_token": _csrf(wall), "pidge_id": str(draft.id)},
+            headers={"Cookie": cookies},
+        )
+        assert failed.status == 200
+        assert 'class="alert alert-danger"' in failed.text
+        assert "Only sealed Pidges can be pinned." in failed.text
+        assert service.store.list_pins(owner.id) == ()
+
+
 async def test_mail_seal_inbox_act_calendar_wall(service: PidgeService) -> None:
     owner = service.setup(
         bootstrap_token="development-bootstrap-token",
