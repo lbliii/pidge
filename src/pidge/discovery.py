@@ -19,7 +19,10 @@ MCP_PROTOCOL_VERSION = "2025-06-18"
 MCP_TOOLS: tuple[dict[str, str], ...] = (
     {
         "name": "draft_pidge",
-        "description": "Create a draft Pidge from intent and recipients.",
+        "description": (
+            "Create a draft Pidge from intent and recipients. "
+            "Loft recipients must already be connected."
+        ),
         "scopes": "pidge:draft",
     },
     {
@@ -44,14 +47,18 @@ MCP_TOOLS: tuple[dict[str, str], ...] = (
     },
     {
         "name": "list_directory",
-        "description": "List other people in this loft.",
+        "description": (
+            "List other people in this loft (discovery). "
+            "Drafting requires an accepted connection."
+        ),
         "scopes": "pidge:draft",
     },
     {
         "name": "list_contacts",
         "description": (
-            "List the owner's address book (local addressing only; "
-            "not cross-loft delivery)."
+            "List the owner's address book (who you may mail; "
+            "local addressing only — not cross-loft delivery). "
+            "Includes accepted loft connections and external contacts."
         ),
         "scopes": "pidge:draft",
     },

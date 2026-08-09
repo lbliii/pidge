@@ -80,13 +80,13 @@ under a shared page-head.
 
 **Metaphor:** loft directory + address book — not a CRM, not a glossary.
 
-- **In the loft** — same-deployment members; addressable without a friend
-  edge; optional connection request as social “introduction.”
+- **In the loft** — same-deployment members; **visible** for discovery; **mail
+  only after an accepted introduction** (permission gate, not optional glue).
 - **Beyond the loft** — external handles agents may address on this loft only
   after the human adds them. Address book ≠ delivery; cross-loft delivery is
   federation (later).
 - **Introductions tray** — pending connection requests with **names**, never
-  raw user IDs.
+  raw user IDs; Accept / Decline / Block.
 - **Add an address** — bounded form panel on the Beyond facet only.
 
 Canonical routes: `/people`, `/people/address-book`. Legacy `/directory` and

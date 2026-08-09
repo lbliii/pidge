@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -186,7 +185,52 @@ def create_app(
 
     # --- MCP tools (agent write path) --------------------------------------
 
-    @app.tool("draft_pidge", description="Create a draft Pidge from intent and recipients.")
+    @app.tool(
+        "list_directory",
+        description=(
+            "List other people in this loft (discovery). "
+            "Drafting to a loft mate requires an accepted connection — see list_contacts."
+        ),
+    )
+    def list_directory() -> list[dict[str, Any]]:
+        _, owner = require_agent("pidge:draft")
+        return [
+            {"id": u.id, "username": u.username, "display_name": u.display_name}
+            for u in service.directory(owner)
+        ]
+
+    @app.tool(
+        "list_contacts",
+        description=(
+            "List the owner's address book (who you may mail; "
+            "local addressing only — not cross-loft delivery). "
+            "Includes accepted loft connections and external contacts. "
+            "Loft mates appear here only after an introduction is accepted."
+        ),
+    )
+    def list_contacts_tool() -> list[dict[str, Any]]:
+        _, owner = require_agent("pidge:draft")
+        return [
+            {
+                "id": c.id,
+                "kind": c.kind,
+                "status": c.status,
+                "display_name": c.display_name,
+                "external_handle": c.external_handle,
+                "loft_user_id": c.loft_user_id,
+            }
+            for c in service.contacts(owner)
+            if c.status != "blocked"
+        ]
+
+    @app.tool(
+        "draft_pidge",
+        description=(
+            "Create a draft Pidge from intent and recipients. "
+            "Loft recipients must already be connected (accepted introduction); "
+            "use list_contacts for deliverable addresses and list_directory to discover people."
+        ),
+    )
     def draft_pidge(
         intent: str,
         recipients: list[str] | str,
@@ -277,35 +321,6 @@ def create_app(
                 for r in service.store.recipients_for(msg.id)
             ],
         }
-
-    @app.tool("list_directory", description="List other people in this loft.")
-    def list_directory() -> list[dict[str, Any]]:
-        _, owner = require_agent("pidge:draft")
-        return [
-            {"id": u.id, "username": u.username, "display_name": u.display_name}
-            for u in service.directory(owner)
-        ]
-
-    @app.tool(
-        "list_contacts",
-        description=(
-            "List the owner's address book (local addressing only; "
-            "not cross-loft delivery)."
-        ),
-    )
-    def list_contacts_tool() -> list[dict[str, Any]]:
-        _, owner = require_agent("pidge:draft")
-        return [
-            {
-                "id": c.id,
-                "kind": c.kind,
-                "status": c.status,
-                "display_name": c.display_name,
-                "external_handle": c.external_handle,
-                "loft_user_id": c.loft_user_id,
-            }
-            for c in service.contacts(owner)
-        ]
 
     @app.tool(
         "add_contact",
@@ -861,9 +876,61 @@ def create_app(
         if not isinstance(user, User):
             return user
         form = await request.form()
-        with contextlib.suppress(PermissionError, LookupError, ValueError):
+        try:
             service.accept_connection(user, int(form.get("request_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "people.html",
+                **_people_loft_context(service, user, error=str(exc)),
+            )
         return Redirect("/people")
+
+    @app.route("/directory/decline", methods=["POST"], referenced=True)
+    async def directory_decline(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            service.decline_connection(user, int(form.get("request_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "people.html",
+                **_people_loft_context(service, user, error=str(exc)),
+            )
+        return Redirect("/people")
+
+    @app.route("/directory/block", methods=["POST"], referenced=True)
+    async def directory_block(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            request_id = form.get("request_id")
+            if request_id:
+                service.block_connection_request(user, int(request_id))
+            else:
+                service.block_loft_user(user, username=str(form.get("username", "")))
+            error = None
+        except (PermissionError, LookupError, ValueError) as exc:
+            error = str(exc)
+        return render(request, "people.html", **_people_loft_context(service, user, error=error))
+
+    @app.route("/directory/unblock", methods=["POST"], referenced=True)
+    async def directory_unblock(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            service.unblock_loft_user(user, username=str(form.get("username", "")))
+            error = None
+        except (LookupError, ValueError) as exc:
+            error = str(exc)
+        return render(request, "people.html", **_people_loft_context(service, user, error=error))
 
     @app.route("/contacts")
     def contacts_page(request: Request):
@@ -906,7 +973,9 @@ def create_app(
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(request, "wall.html", pins=service.store.list_pins(user.id))
+        return render(
+            request, "wall.html", pins=service.store.list_pins(user.id), error=None
+        )
 
     @app.route("/wall/pin", methods=["POST"], referenced=True)
     async def wall_pin(request: Request):
@@ -914,8 +983,15 @@ def create_app(
         if not isinstance(user, User):
             return user
         form = await request.form()
-        with contextlib.suppress(PermissionError, LookupError, ValueError):
+        try:
             service.pin_note(user, int(form.get("pidge_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "wall.html",
+                pins=service.store.list_pins(user.id),
+                error=str(exc),
+            )
         return Redirect("/wall")
 
     def _mcp_url(request: Request) -> str:
@@ -961,8 +1037,10 @@ def create_app(
         form = await request.form()
         action = str(form.get("action", "mint"))
         if action == "revoke":
-            with contextlib.suppress(LookupError):
+            try:
                 service.revoke_agent_token(user, int(form.get("token_id", "0")))
+            except (LookupError, ValueError) as exc:
+                return _agents_page(request, user, error=str(exc))
             return Redirect("/settings/agents")
         preset = str(form.get("preset", DEFAULT_TOKEN_PRESET)).strip() or DEFAULT_TOKEN_PRESET
         error = None
@@ -1520,6 +1598,18 @@ def _people_loft_context(service: PidgeService, user: User, *, error: str | None
     raw_requests = service.store.list_connection_requests(user.id)
     introductions: list[dict[str, Any]] = []
     pending_usernames: set[str] = set()
+    connected_usernames: set[str] = set()
+    blocked_usernames: set[str] = set()
+    for contact in service.contacts(user):
+        if contact.kind != "loft_user" or contact.loft_user_id is None:
+            continue
+        mate = _safe_user(service, contact.loft_user_id)
+        if mate is None:
+            continue
+        if contact.status == "accepted":
+            connected_usernames.add(mate.username)
+        elif contact.status == "blocked":
+            blocked_usernames.add(mate.username)
     for req in raw_requests:
         if req.to_user_id is None:
             # External address-book claims belong on Beyond, not loft intros.
@@ -1547,6 +1637,8 @@ def _people_loft_context(service: PidgeService, user: User, *, error: str | None
         "introductions": introductions,
         "pending_intro_count": sum(1 for i in introductions if i["status"] == "pending"),
         "pending_usernames": pending_usernames,
+        "connected_usernames": connected_usernames,
+        "blocked_usernames": blocked_usernames,
         "error": error,
     }
 

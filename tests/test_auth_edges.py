@@ -12,6 +12,7 @@ from pidge.config import PidgeConfig
 from pidge.services import PidgeService
 from pidge.store import MemoryStore
 from pidge.web import SESSION_COOKIE, create_app
+from tests.helpers import connect_loft_mates
 
 pytestmark = pytest.mark.asyncio
 
@@ -78,6 +79,7 @@ def _setup_loft(service: PidgeService):
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     ).user
+    connect_loft_mates(service, owner, lucy)
     return owner, lucy
 
 
