@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -967,7 +966,9 @@ def create_app(
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(request, "wall.html", pins=service.store.list_pins(user.id))
+        return render(
+            request, "wall.html", pins=service.store.list_pins(user.id), error=None
+        )
 
     @app.route("/wall/pin", methods=["POST"], referenced=True)
     async def wall_pin(request: Request):
@@ -975,8 +976,15 @@ def create_app(
         if not isinstance(user, User):
             return user
         form = await request.form()
-        with contextlib.suppress(PermissionError, LookupError, ValueError):
+        try:
             service.pin_note(user, int(form.get("pidge_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "wall.html",
+                pins=service.store.list_pins(user.id),
+                error=str(exc),
+            )
         return Redirect("/wall")
 
     def _mcp_url(request: Request) -> str:
@@ -1022,8 +1030,10 @@ def create_app(
         form = await request.form()
         action = str(form.get("action", "mint"))
         if action == "revoke":
-            with contextlib.suppress(LookupError):
+            try:
                 service.revoke_agent_token(user, int(form.get("token_id", "0")))
+            except (LookupError, ValueError) as exc:
+                return _agents_page(request, user, error=str(exc))
             return Redirect("/settings/agents")
         preset = str(form.get("preset", DEFAULT_TOKEN_PRESET)).strip() or DEFAULT_TOKEN_PRESET
         error = None
