@@ -1,108 +1,101 @@
 {% extends "layout.html" %}
 {% block title %}Desk — {{ loft_name }}{% end %}
 {% block page_content %}
-<section class="hero">
+<section class="hero hero-desk">
   <div class="floating-seal" aria-hidden="true"></div>
   <p class="kicker">{{ loft_name }}</p>
-  <h1>Mail that <span>means</span> something.</h1>
+  <h1>What needs <span>you</span>.</h1>
   <p class="hero-lead">
-    Good day, {{ viewer.display_name }}. Your agent drafts. You seal.
-    No typing required at the desk.
+    Good day, {{ viewer.display_name }}. Draft → Enrich → Seal.
+    Your agent gathers the packet; you decide. Calendar and wall stay quiet
+    until a sealed Pidge leaves residue.
   </p>
   <div class="hero-actions">
     <a class="btn btn-seal" href="/compose">Open compose</a>
-    <a class="btn btn-ghost" href="/inbox">Inbox</a>
     <a class="btn btn-ghost" href="/settings/agents">Agents</a>
   </div>
 </section>
 
-<section class="section">
-  <h2>On your desk</h2>
-  <p class="lede">Drafts wait for seal. Inbox, calendar, and wall stay below the fold.</p>
-  <div class="pillars pillars-4">
-    <article>
-      <h3>Drafts</h3>
-      {% if drafts %}
-        <ul class="object-list">
-          {% for m in drafts %}
-          <li class="object-row">
-            <span class="mark warn" aria-hidden="true">!</span>
-            <div>
-              <strong><a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a></strong>
-              <div class="preview">Needs enrich or seal</div>
-            </div>
-            <div class="row-actions">
-              <form method="post" action="/compose/{{ m.id }}/discard">
-                {{ csrf_field() }}
-                <button class="btn btn-ghost" type="submit">Discard</button>
-              </form>
-            </div>
-          </li>
-          {% end %}
-        </ul>
-      {% else %}
-        <div class="empty-state">
-          <h3>No drafts</h3>
-          <p>Point an agent with a scoped token at <code>/mcp</code>.</p>
-        </div>
+<div class="blotter">
+  <p class="blotter-lead">
+    One stack for decisions. Not a dashboard of equal pillars.
+  </p>
+
+  <h2 class="blotter-label">Needs you</h2>
+  {% if needs %}
+  <div class="needs-stack">
+    {% for item in needs %}
+    <a class="needs-row" href="{{ item['href'] }}">
+      <span class="mark{% if item['mark_class'] %} {{ item['mark_class'] }}{% end %}" aria-hidden="true">{{ item['mark'] }}</span>
+      <div>
+        <strong>{{ item['title'] }}</strong>
+        <div class="why">{{ item['why'] }}</div>
+        <span class="badge {{ item['badge_class'] }}">{{ item['badge'] }}</span>
+      </div>
+      {% if item['action'] %}
+      <span class="row-actions">
+        <span class="btn btn-seal" style="pointer-events: none">{{ item['action'] }}</span>
+      </span>
+      {% elif item['time'] %}
+      <time>{{ item['time'] }}</time>
       {% end %}
-    </article>
-    <article>
-      <h3>Inbox</h3>
-      {% if inbox %}
-        <ul class="object-list">
-          {% for m in inbox %}
-          <li class="object-row">
-            <span class="mark" aria-hidden="true">{{ (m.author_name or "?")[:1] }}</span>
-            <div>
-              <strong><a href="/p/{{ m.id }}">{{ m.summary }}</a></strong>
-              <div class="preview">{{ m.author_name }}</div>
-            </div>
-          </li>
-          {% end %}
-        </ul>
-      {% else %}
-        <div class="empty-state">
-          <h3>Quiet inbox</h3>
-          <p>Nothing sealed for you yet.</p>
-        </div>
-      {% end %}
-    </article>
-    <article>
-      <h3>Calendar</h3>
-      {% if holds %}
-        <ul class="object-list">
-          {% for h in holds %}
-          <li class="hold-strip">
-            <strong>{{ h.title }}</strong>
-            <span class="mono">{% if h.starts_at %}{{ h.starts_at }}{% else %}—{% end %}</span>
-          </li>
-          {% end %}
-        </ul>
-      {% else %}
-        <div class="empty-state">
-          <h3>No holds</h3>
-          <p>Seal an invite with a when-slot.</p>
-        </div>
-      {% end %}
-    </article>
-    <article>
-      <h3>Wall</h3>
-      {% if pins %}
-        <ul class="object-list">
-          {% for p in pins %}
-          <li class="pin-card">
-            <a href="/p/{{ p.pidge_id }}"><strong>{{ p.title }}</strong></a>
-          </li>
-          {% end %}
-        </ul>
-      {% else %}
-        <div class="empty-state">
-          <h3>Bare wall</h3>
-          <p>Pin sealed Pidges from a thread.</p>
-        </div>
-      {% end %}
-    </article>
+    </a>
+    {% end %}
   </div>
-</section>
+  {% else %}
+  <div class="empty-state">
+    <h3>Nothing needs you</h3>
+    <p>Point an agent with a scoped token at <code>/mcp</code>, or wait for mail that needs an act.</p>
+    <a class="btn btn-seal" href="/settings/agents">Mint an agent token</a>
+  </div>
+  {% end %}
+
+  <div class="quiet-strip">
+    <h3>Mail peek</h3>
+    {% if mail_peek %}
+    <div class="object-list">
+      {% for item in mail_peek %}
+      <a class="object-row" href="{{ item['href'] }}">
+        <span class="mark" aria-hidden="true">{{ item['mark'] }}</span>
+        <div>
+          <strong>{{ item['title'] }}</strong>
+          <div class="preview">{{ item['preview'] }}</div>
+          <span class="badge">{{ item['badge'] }}</span>
+        </div>
+        {% if item['time'] %}<time>{{ item['time'] }}</time>{% end %}
+      </a>
+      {% end %}
+    </div>
+    {% else %}
+    <p class="quiet-empty">Settled mail will peek here.</p>
+    {% end %}
+
+    <h3>Coming up</h3>
+    {% if holds %}
+      {% for h in holds %}
+      <div class="hold-strip">
+        <div>
+          <strong>{{ h.title }}</strong>
+          <div class="hint">{% if h.starts_at %}{{ h.starts_at }}{% else %}—{% end %}{% if h.state %} · {{ h.state }}{% end %}</div>
+        </div>
+        <a href="/p/{{ h.pidge_id }}">Pidge</a>
+      </div>
+      {% end %}
+    {% else %}
+    <p class="quiet-empty">Holds appear after you seal an invite with a when-slot.</p>
+    {% end %}
+
+    <h3>Wall</h3>
+    {% if pins %}
+      {% for p in pins %}
+      <div class="pin-card">
+        <strong>{{ p.title }}</strong>
+        <a href="/p/{{ p.pidge_id }}">Source</a>
+      </div>
+      {% end %}
+    {% else %}
+    <p class="quiet-empty">Pin sealed Pidges from a thread.</p>
+    {% end %}
+  </div>
+</div>
 {% end %}
