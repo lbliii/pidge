@@ -26,7 +26,7 @@ Side panel / badge copy uses **Enriching** (CSS may still use `.flight-rail`).
 2. **Recipient act** — open packet → kind-scoped act → hold / pin
 3. **Desk blotter** — arrive → **Needs you** → one primary action
 
-Primary chrome: **Desk · Mail · People · Account** (Agents under Account).
+Primary chrome: **Desk · Mail · People · Account** (Agents · Stamps under Account).
 Compose is a state, not a permanent top-level tab. Calendar and wall are
 quiet peeks on the desk.
 
@@ -46,7 +46,8 @@ quiet peeks on the desk.
 - [login.html](./login.html) — enter the loft
 - [index.html](./index.html) — landing
 - [inbox.html](./inbox.html) · [fonts.html](./fonts.html)
-- [stamps.md](./stamps.md) — letter stamp rules (mint, types, anti-HUD) · album mock TBD
+- [stamps.html](./stamps.html) — stamp album + cancellation specimen
+- [stamps.md](./stamps.md) — letter stamp rules (mint, types, anti-HUD)
 
 ```bash
 python -m http.server 8766
@@ -69,7 +70,7 @@ only**. Humans seal; agents draft and enrich via MCP (`draft_pidge`,
 ## Letter stamps (delight layer)
 
 Collectible postage earned on **Seal** — not XP. Full rules:
-[stamps.md](./stamps.md). Mocks: album + affixed packet face (issues #77–#78).
+[stamps.md](./stamps.md). Album mock: [stamps.html](./stamps.html) (#77). Affixed packet face still TBD (#78).
 
 Summary:
 
