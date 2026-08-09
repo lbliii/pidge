@@ -114,14 +114,20 @@ must stay un-nested (see `tests/test_design_system.py`).
 
 ## Next experience waves
 
+Tracked under foundation saga [#97](https://github.com/lbliii/pidge/issues/97)
+(honesty → architecture → store → residue → loft trust).
+
 1. ~~**Desk blotter** — replace pillars with Needs-you stack + quiet peeks~~ (#92)
 2. ~~**Out / delivery** — post-seal ceremony~~ (#94)
 3. ~~**Mail stance badges** — `Invite · needs act` vocabulary~~ (#94)
 4. ~~**Agent discovery** — `/connect`, `llms.txt`, MCP well-known cards~~
-5. **Calendar / Wall** — residue page mocks aligned with desk peeks
-6. **Agents ritual** — secret drawer “shown once”
-7. **Stamp affix** — cancellation + face on sealed bubble (#78)
-8. **Agent OS loft** — compose status hub + host distribution (#121)
+5. ~~**Agent OS loft** — compose status hub + host distribution~~ (#121 ship-first)
+6. **Honesty & errors** — kill silent failure (#98; #99/#102 done)
+7. **Architecture spine** — decompose `web.py` / service boundary (#103)
+8. **Store confidence** — Postgres path + shared helpers (#109)
+9. **Calendar / Wall / Agents rituals** — residue first-class (#113)
+10. **Invite-only loft trust** — private loft gate (#118)
+11. **Stamp affix** — cancellation + face on sealed bubble (#78; after #113)
 
 ---
 ## Success check
