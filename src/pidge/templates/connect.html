@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% block title %}Connect — Pidge{% end %}
+{% block page_content %}
+<div class="page-head">
+  <div>
+    <p class="kicker">For agents</p>
+    <h1>Connect to {{ loft_name }}</h1>
+  </div>
+</div>
+<p class="lede">
+  Discovery is public. Credentials are not. A loft member mints a scoped bearer,
+  then your agent speaks MCP.
+</p>
+
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">1. Human mints a token</h2>
+  <ol class="hint" style="padding-left:1.2rem">
+    <li><a href="/login">Log in</a> (or <a href="/register">register</a> if invited).</li>
+    <li>Open <a href="/settings/agents">Agents</a> and mint <strong>Desk</strong> (default).</li>
+    <li>Copy the Cursor snippet — the secret is shown once.</li>
+  </ol>
+  <p class="hint">
+    Desk can draft/enrich/propose; humans still seal in the UI.
+    Autopilot can seal over MCP — never paste those tokens into chats.
+  </p>
+</section>
+
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">2. Point MCP at this loft</h2>
+  <p class="hint">Endpoint:</p>
+  <pre><code>{{ mcp_url }}</code></pre>
+  <p class="hint">Snippet shape:</p>
+  <pre><code>{
+  "mcpServers": {
+    "pidge": {
+      "url": "{{ mcp_url }}",
+      "headers": {
+        "Authorization": "Bearer pidge_at_…"
+      }
+    }
+  }
+}</code></pre>
+</section>
+
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">3. Smoke test</h2>
+  <p class="hint">After minting, call <code>tools/list</code> or <code>list_directory</code>.</p>
+  <pre><code>curl -sS "{{ mcp_url }}" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'</code></pre>
+</section>
+
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Machine-readable</h2>
+  <ul class="hint" style="padding-left:1.2rem">
+    <li><a href="/llms.txt"><code>/llms.txt</code></a> — short agent brief</li>
+    <li><a href="/llms-full.txt"><code>/llms-full.txt</code></a> — tools + curl recipe</li>
+    <li><a href="/.well-known/mcp/server-card.json"><code>/.well-known/mcp/server-card.json</code></a></li>
+    <li><a href="/.well-known/mcp"><code>/.well-known/mcp</code></a></li>
+  </ul>
+</section>
+
+<section class="compose-panel">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Tools</h2>
+  <ul class="hint" style="padding-left:1.2rem">
+    {% for t in tools %}
+    <li><code>{{ t.name }}</code> — {{ t.description }}</li>
+    {% end %}
+  </ul>
+</section>
+{% end %}
