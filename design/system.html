@@ -48,19 +48,29 @@
           <div class="swatch"><i style="background: var(--paper)"></i><span>paper</span></div>
           <div class="swatch"><i style="background: var(--ink)"></i><span>ink</span></div>
           <div class="swatch"><i style="background: var(--bay)"></i><span>action</span></div>
+          <div class="swatch"><i style="background: var(--leather)"></i><span>leather</span></div>
+          <div class="swatch"><i style="background: var(--flax)"></i><span>flax</span></div>
           <div class="swatch"><i style="background: var(--stable)"></i><span>success</span></div>
           <div class="swatch"><i style="background: var(--clay)"></i><span>danger</span></div>
-          <div class="swatch"><i style="background: var(--flax)"></i><span>flax</span></div>
+          <div class="swatch"><i style="background: var(--mist)"></i><span>muted</span></div>
         </div>
-        <p style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; text-transform: uppercase; margin: 0 0 0.35rem">
-          Display · seal the invite
+        <p class="hint" style="margin-top: 0.75rem">
+          Display · Barlow Semi Condensed · Body · Source Sans 3 · Mono · IBM Plex Mono
         </p>
-        <p style="margin: 0 0 0.35rem; max-width: 36rem">
-          Body · agents draft; humans decide. Structured mail, not SMTP cosplay.
+        <p class="hint">
+          Tokens live in <code>:root</code> — brand → semantic (<code>--action</code>,
+          <code>--success</code>, <code>--danger</code>, <code>--warn</code>,
+          <code>--muted</code>) → type/space/radius/shadow/motion. Components consume
+          semantic + scale tokens, never hex.
         </p>
-        <p class="mono" style="margin: 0; color: var(--ink-soft); font-size: 0.9rem">
-          Mono · pidge:msg_8f3a · pidge:draft · sha256:ab12…
-        </p>
+        <div class="specimen-row" style="margin-top: 0.75rem; flex-wrap: wrap; gap: 0.65rem">
+          <span class="mono" style="font-size: var(--text-xs)">text-xs</span>
+          <span class="mono" style="font-size: var(--text-sm)">text-sm</span>
+          <span class="mono" style="font-size: var(--text-md)">text-md</span>
+          <span class="mono" style="font-size: var(--text-base)">text-base</span>
+          <span class="mono" style="font-size: var(--text-lg)">text-lg</span>
+          <span class="mono">space-1…8 · radius-sm/md/lg/pill · shadow-1…3 · duration-fast/med/slow</span>
+        </div>
       </section>
 
       <section class="kit-section">

@@ -38,7 +38,7 @@
   <a class="btn btn-ghost" href="/inbox">Mail</a>
 </div>
 
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 {% if message.state == "revoked" %}
 <p class="hint">Revoked — hidden from active inbox and sent. Seal hash unchanged.</p>
 {% elif message.state == "superseded" %}

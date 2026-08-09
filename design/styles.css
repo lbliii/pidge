@@ -1,5 +1,6 @@
 /* Pidge — pigeon / earth tones (leather, bay, oat, stable) */
 :root {
+  /* Brand */
   --ink: #2a211c;
   --ink-soft: #6b5a4e;
   --paper: #efe8df;
@@ -14,21 +15,64 @@
   --line: color-mix(in oklab, var(--ink) 12%, transparent);
   --card: #f7f1e8;
   --card-raised: #fffaf3;
-  /* semantic aliases */
+  --on-leather: #f6efe6;
+  --on-leather-bright: #fff8f0;
+
+  /* Semantic roles — components use these, not brand hex */
   --action: var(--bay);
   --success: var(--stable);
   --danger: var(--clay);
+  --warn: var(--bay);
   --muted: var(--mist);
-  /* legacy aliases */
+  --focus-ring: color-mix(in oklab, var(--bay) 50%, transparent);
+
+  /* Legacy aliases */
   --seal: var(--leather);
   --seal-deep: var(--leather-deep);
   --moss: var(--stable);
   --silk: var(--flax);
+
+  /* Type */
   --font-display: "Barlow Semi Condensed", "Avenir Next Condensed", sans-serif;
   --font-body: "Source Sans 3", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --text-xs: 0.72rem;
+  --text-sm: 0.88rem;
+  --text-md: 0.95rem;
+  --text-base: 1.05rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.55rem;
+  --text-display: clamp(3rem, 8vw, 5.2rem);
+  --leading: 1.55;
+  --tracking-wide: 0.04em;
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.45rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 3rem;
+
+  /* Shape */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --radius: var(--radius-md);
+
+  /* Elevation */
+  --shadow-1: 0 1px 0 var(--line);
+  --shadow-2: 0 12px 28px color-mix(in oklab, var(--leather) 14%, transparent);
+  --shadow-3: 0 12px 30px color-mix(in oklab, var(--leather) 12%, transparent);
+
+  /* Motion */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --radius: 12px;
+  --duration-fast: 160ms;
+  --duration-med: 180ms;
+  --duration-slow: 500ms;
 }
 
 *,
@@ -174,7 +218,7 @@ a:hover {
   font-weight: 700;
   font-size: 0.95rem;
   background: var(--leather);
-  color: #f6efe6;
+  color: var(--on-leather);
   text-decoration: none;
   cursor: pointer;
   transition: transform 180ms var(--ease), background 180ms var(--ease);
@@ -183,7 +227,7 @@ a:hover {
 .btn:hover {
   transform: translateY(-1px);
   background: var(--bay);
-  color: #fff8f0;
+  color: var(--on-leather-bright);
 }
 
 .btn-ghost {
@@ -199,12 +243,12 @@ a:hover {
 
 .btn-seal {
   background: var(--leather-deep);
-  color: #f6efe6;
+  color: var(--on-leather);
 }
 
 .btn-seal:hover {
   background: var(--bay);
-  color: #fff8f0;
+  color: var(--on-leather-bright);
 }
 
 .btn:disabled,
@@ -1276,7 +1320,7 @@ a.object-row:hover {
   border: 1px solid color-mix(in oklab, var(--leather) 14%, transparent);
   background:
     linear-gradient(160deg, color-mix(in oklab, var(--bay) 35%, #2a241c), color-mix(in oklab, var(--leather-deep) 80%, #1a1510));
-  color: #f6efe6;
+  color: var(--on-leather);
   display: grid;
   align-content: end;
   padding: 1.1rem 1.2rem;
@@ -1305,7 +1349,7 @@ a.object-row:hover {
   line-height: 1;
   letter-spacing: -0.04em;
   opacity: 0.22;
-  color: #f6efe6;
+  color: var(--on-leather);
   pointer-events: none;
 }
 

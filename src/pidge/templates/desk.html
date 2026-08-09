@@ -23,43 +23,84 @@
     <article>
       <h3>Drafts</h3>
       {% if drafts %}
-        <ul>
+        <ul class="object-list">
           {% for m in drafts %}
-          <li class="desk-draft">
-            <a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a>
-            <form method="post" action="/compose/{{ m.id }}/discard">
-              {{ csrf_field() }}
-              <button class="btn btn-ghost" type="submit">Discard</button>
-            </form>
+          <li class="object-row">
+            <span class="mark warn" aria-hidden="true">!</span>
+            <div>
+              <strong><a href="/compose/{{ m.id }}">{{ m.summary or m.intent }}</a></strong>
+              <div class="preview">Needs enrich or seal</div>
+            </div>
+            <div class="row-actions">
+              <form method="post" action="/compose/{{ m.id }}/discard">
+                {{ csrf_field() }}
+                <button class="btn btn-ghost" type="submit">Discard</button>
+              </form>
+            </div>
           </li>
           {% end %}
         </ul>
       {% else %}
-        <p class="hint">No drafts. Point an agent with a scoped token at <code>/mcp</code>.</p>
+        <div class="empty-state">
+          <h3>No drafts</h3>
+          <p>Point an agent with a scoped token at <code>/mcp</code>.</p>
+        </div>
       {% end %}
     </article>
     <article>
       <h3>Inbox</h3>
       {% if inbox %}
-        <ul>{% for m in inbox %}<li><a href="/p/{{ m.id }}">{{ m.summary }}</a> · {{ m.author_name }}</li>{% end %}</ul>
+        <ul class="object-list">
+          {% for m in inbox %}
+          <li class="object-row">
+            <span class="mark" aria-hidden="true">{{ (m.author_name or "?")[:1] }}</span>
+            <div>
+              <strong><a href="/p/{{ m.id }}">{{ m.summary }}</a></strong>
+              <div class="preview">{{ m.author_name }}</div>
+            </div>
+          </li>
+          {% end %}
+        </ul>
       {% else %}
-        <p class="hint">Nothing sealed for you yet.</p>
+        <div class="empty-state">
+          <h3>Quiet inbox</h3>
+          <p>Nothing sealed for you yet.</p>
+        </div>
       {% end %}
     </article>
     <article>
       <h3>Calendar</h3>
       {% if holds %}
-        <ul>{% for h in holds %}<li>{{ h.title }}{% if h.starts_at %} · {{ h.starts_at }}{% end %}</li>{% end %}</ul>
+        <ul class="object-list">
+          {% for h in holds %}
+          <li class="hold-strip">
+            <strong>{{ h.title }}</strong>
+            <span class="mono">{% if h.starts_at %}{{ h.starts_at }}{% else %}—{% end %}</span>
+          </li>
+          {% end %}
+        </ul>
       {% else %}
-        <p class="hint">No holds yet.</p>
+        <div class="empty-state">
+          <h3>No holds</h3>
+          <p>Seal an invite with a when-slot.</p>
+        </div>
       {% end %}
     </article>
     <article>
       <h3>Wall</h3>
       {% if pins %}
-        <ul>{% for p in pins %}<li><a href="/p/{{ p.pidge_id }}">{{ p.title }}</a></li>{% end %}</ul>
+        <ul class="object-list">
+          {% for p in pins %}
+          <li class="pin-card">
+            <a href="/p/{{ p.pidge_id }}"><strong>{{ p.title }}</strong></a>
+          </li>
+          {% end %}
+        </ul>
       {% else %}
-        <p class="hint">Pin sealed Pidges from a thread.</p>
+        <div class="empty-state">
+          <h3>Bare wall</h3>
+          <p>Pin sealed Pidges from a thread.</p>
+        </div>
       {% end %}
     </article>
   </div>

@@ -7,12 +7,22 @@
     <h1>Join this loft</h1>
   </div>
 </div>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 <form method="post" action="/register" class="compose-panel">
   {{ csrf_field() }}
-  <label>Username <input name="username" value="{{ values.username }}" required></label>
-  <label>Display name <input name="display_name" value="{{ values.display_name }}"></label>
-  <label>Password <input name="password" type="password" required minlength="10"></label>
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" value="{{ values.username }}" required autocomplete="username">
+  </div>
+  <div class="field">
+    <label for="display_name">Display name</label>
+    <input id="display_name" name="display_name" value="{{ values.display_name }}" autocomplete="name">
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password">
+    <p class="field-hint">At least 10 characters.</p>
+  </div>
   <button class="btn btn-seal" type="submit">Join</button>
 </form>
 {% end %}

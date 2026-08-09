@@ -8,18 +8,26 @@
   </div>
 </div>
 {% if holds %}
-<ul>
+<ul class="object-list">
   {% for h in holds %}
-  <li>
-    <strong>{{ h.title }}</strong>
-    · {{ h.state }}
-    {% if h.starts_at %} · {{ h.starts_at }}{% end %}
-    {% if h.place %} · {{ h.place }}{% end %}
-    · <a href="/p/{{ h.pidge_id }}">Pidge</a>
+  <li class="object-row">
+    <span class="mark seal" aria-hidden="true">H</span>
+    <div>
+      <strong>{{ h.title }}</strong>
+      <div class="preview">
+        {{ h.state }}{% if h.starts_at %} · {{ h.starts_at }}{% end %}{% if h.place %} · {{ h.place }}{% end %}
+      </div>
+    </div>
+    <div class="row-actions">
+      <a class="btn btn-ghost" href="/p/{{ h.pidge_id }}">Open</a>
+    </div>
   </li>
   {% end %}
 </ul>
 {% else %}
-<p class="hint">No holds. Seal an invite with a when-slot, or propose via MCP.</p>
+<div class="empty-state">
+  <h3>No holds</h3>
+  <p>Seal an invite with a when-slot, or propose via MCP.</p>
+</div>
 {% end %}
 {% end %}

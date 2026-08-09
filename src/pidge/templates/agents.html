@@ -8,10 +8,10 @@
   </div>
 </div>
 <p class="lede">Scoped bearer tokens for MCP. Agents never share your browser session.</p>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 
-<section class="compose-panel" style="margin-bottom:1.5rem">
-  <h2 style="margin-top:0;font-size:1.1rem">Connect an agent</h2>
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Connect an agent</h2>
   <ol class="hint" style="padding-left:1.2rem">
     <li>Mint a token below (shown once).</li>
     <li>In Cursor: Settings → MCP → add a remote server, or paste into <code>~/.cursor/mcp.json</code>.</li>
@@ -19,7 +19,11 @@
   </ol>
   {% if minted_secret %}
   {% if minted_preset == "autopilot" %}
-  <p class="hint autopilot-warn">Autopilot token minted. This bearer can <strong>seal Pidges over MCP</strong>. Never paste Autopilot tokens into shared chats.</p>
+  <div class="alert alert-danger" role="status">
+    Autopilot token minted. This bearer can <strong>seal Pidges over MCP</strong>. Never paste Autopilot tokens into shared chats.
+  </div>
+  {% else %}
+  <div class="alert alert-success" role="status">Token minted — copy the snippet now. The secret is shown once.</div>
   {% end %}
   <p class="hint">Copy this into your MCP config — includes the secret, shown once:</p>
   <pre><code>{
@@ -51,58 +55,87 @@
 <form method="post" action="/settings/agents" class="compose-panel">
   {{ csrf_field() }}
   <input type="hidden" name="action" value="mint">
-  <label>Label <input name="label" value="Secretary" required></label>
-  <fieldset style="border:0;padding:0;margin:0.75rem 0">
-    <legend class="hint" style="padding:0;margin-bottom:0.4rem">Preset</legend>
-    <label style="display:block;margin-bottom:0.5rem">
+  <div class="field">
+    <label for="label">Label</label>
+    <input id="label" name="label" value="Secretary" required>
+    <p class="field-hint">Shown on the token list.</p>
+  </div>
+  <p class="hint" style="margin-bottom: 0.35rem">Preset</p>
+  <div class="preset-grid">
+    <label class="preset-card{% if default_preset == 'desk' %} is-selected{% end %}">
       <input type="radio" name="preset" value="desk" {% if default_preset == "desk" %}checked{% end %}>
-      <strong>Desk</strong> — draft, enrich, propose holds, pin notes (default · 90 days)
+      <strong>Desk</strong>
+      <p>Draft, enrich, propose holds, pin notes · 90 days</p>
     </label>
-    <label style="display:block;margin-bottom:0.5rem">
+    <label class="preset-card{% if default_preset == 'draft' %} is-selected{% end %}">
       <input type="radio" name="preset" value="draft" {% if default_preset == "draft" %}checked{% end %}>
-      <strong>Draft</strong> — <code>pidge:draft</code> only · 90 days
+      <strong>Draft</strong>
+      <p><code>pidge:draft</code> only · 90 days</p>
     </label>
-    <label style="display:block;margin-bottom:0.5rem">
+    <label class="preset-card{% if default_preset == 'confirm' %} is-selected{% end %}">
       <input type="radio" name="preset" value="confirm" {% if default_preset == "confirm" %}checked{% end %}>
-      <strong>Confirm</strong> — Desk + propose seal (one-shot human challenge URL · 90 days)
+      <strong>Confirm</strong>
+      <p>Desk + propose seal (one-shot human challenge) · 90 days</p>
     </label>
-    <label style="display:block;margin-bottom:0.5rem">
+    <label class="preset-card{% if default_preset == 'autopilot' %} is-selected{% end %}">
       <input type="radio" name="preset" value="autopilot" {% if default_preset == "autopilot" %}checked{% end %}>
-      <strong>Autopilot</strong> — Confirm + <code>pidge:seal</code> (can seal over MCP · 30 days)
+      <strong>Autopilot</strong>
+      <p>Confirm + <code>pidge:seal</code> · can seal over MCP · 30 days</p>
     </label>
-  </fieldset>
-  <label class="autopilot-ack" style="display:block;margin:0.75rem 0;padding:0.75rem;border:1px solid color-mix(in oklab, #8b3a2a 35%, transparent);border-radius:8px;background:color-mix(in oklab, #8b3a2a 8%, white)">
-    <input type="checkbox" name="acknowledge_autopilot" value="1">
-    <strong>I acknowledge Autopilot risk</strong> — this token can seal Pidges without a browser challenge. Never paste Autopilot tokens into shared chats. Required only when minting Autopilot.
-  </label>
+  </div>
+  <div class="alert alert-warn">
+    <label style="display:flex;gap:0.65rem;align-items:flex-start;margin:0;cursor:pointer">
+      <input type="checkbox" name="acknowledge_autopilot" value="1" style="margin-top:0.2rem">
+      <span>
+        <strong>I acknowledge Autopilot risk</strong> — this token can seal Pidges without a browser challenge.
+        Never paste Autopilot tokens into shared chats. Required only when minting Autopilot.
+      </span>
+    </label>
+  </div>
   <p class="hint">Scopes: {% for s in scopes %}<code>{{ s }}</code> {% end %}</p>
   <button class="btn btn-seal" type="submit">Mint token</button>
 </form>
-<ul>
+
+{% if tokens %}
+<ul class="token-list" style="margin-top: var(--space-6)">
   {% for t in tokens %}
-  <li>
-    {{ t.label }} · {% if t.revoked_at %}revoked{% else %}active{% end %}
-    · {% set badge = infer_preset(t.scopes) %}
-    {% if badge == "autopilot" %}
-    <span class="badge autopilot">Autopilot</span>
-    <span class="hint autopilot-warn">Can seal over MCP — never paste into shared chats</span>
-    {% elif badge %}
-    <span class="hint">{{ badge.capitalize() }}</span>
-    {% else %}
-    <span class="hint">custom</span>
-    {% end %}
-    · {% for s in t.scopes %}<code>{{ s }}</code> {% end %}
-    {% if not t.revoked_at %}
-    <form method="post" action="/settings/agents" style="display:inline">
-      {{ csrf_field() }}
-      <input type="hidden" name="action" value="revoke">
-      <input type="hidden" name="token_id" value="{{ t.id }}">
-      <button class="btn btn-ghost" type="submit">Revoke</button>
-    </form>
-    {% end %}
+  <li class="token-row">
+    <span class="mark agent" aria-hidden="true">A</span>
+    <div>
+      <strong>{{ t.label }}</strong>
+      <div class="meta">
+        {% if t.revoked_at %}revoked{% else %}active{% end %}
+        · {% set badge = infer_preset(t.scopes) %}
+        {% if badge == "autopilot" %}
+        <span class="badge autopilot">Autopilot</span>
+        {% elif badge %}
+        <span class="badge draft">{{ badge.capitalize() }}</span>
+        {% else %}
+        <span class="badge draft">custom</span>
+        {% end %}
+      </div>
+      <div class="meta">{% for s in t.scopes %}<code>{{ s }}</code> {% end %}</div>
+      {% if badge == "autopilot" and not t.revoked_at %}
+      <p class="hint autopilot-warn">Can seal over MCP — never paste into shared chats</p>
+      {% end %}
+    </div>
+    <div class="row-actions">
+      {% if not t.revoked_at %}
+      <form method="post" action="/settings/agents">
+        {{ csrf_field() }}
+        <input type="hidden" name="action" value="revoke">
+        <input type="hidden" name="token_id" value="{{ t.id }}">
+        <button class="btn btn-danger" type="submit">Revoke</button>
+      </form>
+      {% end %}
+    </div>
   </li>
-  {% else %}
-  <li class="hint">No tokens yet.</li>
   {% end %}
 </ul>
+{% else %}
+<div class="empty-state" style="margin-top: var(--space-6)">
+  <h3>No tokens yet</h3>
+  <p>Mint a scoped bearer for your secretary agent.</p>
+</div>
+{% end %}
 {% end %}

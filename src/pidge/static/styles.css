@@ -1,5 +1,6 @@
 /* Pidge — pigeon / earth tones (leather, bay, oat, stable) */
 :root {
+  /* Brand */
   --ink: #2a211c;
   --ink-soft: #6b5a4e;
   --paper: #efe8df;
@@ -10,19 +11,68 @@
   --flax: #c4a574;
   --stable: #5a6b4a;
   --mist: #8a7b6c;
+  --clay: #8b3a2a;
   --line: color-mix(in oklab, var(--ink) 12%, transparent);
   --card: #f7f1e8;
   --card-raised: #fffaf3;
-  /* aliases used across the sheet */
+  --on-leather: #f6efe6;
+  --on-leather-bright: #fff8f0;
+
+  /* Semantic roles — components use these, not brand hex */
+  --action: var(--bay);
+  --success: var(--stable);
+  --danger: var(--clay);
+  --warn: var(--bay);
+  --muted: var(--mist);
+  --focus-ring: color-mix(in oklab, var(--bay) 50%, transparent);
+
+  /* Legacy aliases */
   --seal: var(--leather);
   --seal-deep: var(--leather-deep);
   --moss: var(--stable);
   --silk: var(--flax);
+
+  /* Type */
   --font-display: "Barlow Semi Condensed", "Avenir Next Condensed", sans-serif;
   --font-body: "Source Sans 3", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --text-xs: 0.72rem;
+  --text-sm: 0.88rem;
+  --text-md: 0.95rem;
+  --text-base: 1.05rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.55rem;
+  --text-display: clamp(3rem, 8vw, 5.2rem);
+  --leading: 1.55;
+  --tracking-wide: 0.04em;
+
+  /* Space */
+  --space-1: 0.25rem;
+  --space-2: 0.45rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 3rem;
+
+  /* Shape */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --radius: var(--radius-md);
+
+  /* Elevation */
+  --shadow-1: 0 1px 0 var(--line);
+  --shadow-2: 0 12px 28px color-mix(in oklab, var(--leather) 14%, transparent);
+  --shadow-3: 0 12px 30px color-mix(in oklab, var(--leather) 12%, transparent);
+
+  /* Motion */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --radius: 12px;
+  --duration-fast: 160ms;
+  --duration-med: 180ms;
+  --duration-slow: 500ms;
 }
 
 *,
@@ -114,7 +164,7 @@ a:hover {
   font-weight: 700;
   font-size: 0.95rem;
   background: var(--leather);
-  color: #f6efe6;
+  color: var(--on-leather);
   text-decoration: none;
   cursor: pointer;
   transition: transform 180ms var(--ease), background 180ms var(--ease);
@@ -123,7 +173,7 @@ a:hover {
 .btn:hover {
   transform: translateY(-1px);
   background: var(--bay);
-  color: #fff8f0;
+  color: var(--on-leather-bright);
 }
 
 .btn:disabled,
@@ -147,12 +197,12 @@ a:hover {
 
 .btn-seal {
   background: var(--leather-deep);
-  color: #f6efe6;
+  color: var(--on-leather);
 }
 
 .btn-seal:hover {
   background: var(--bay);
-  color: #fff8f0;
+  color: var(--on-leather-bright);
 }
 
 /* Landing */
@@ -263,7 +313,7 @@ a:hover {
   font-family: var(--font-display);
   font-weight: 750;
   font-size: 4rem;
-  color: color-mix(in oklab, #f6efe6 90%, transparent);
+  color: color-mix(in oklab, var(--on-leather) 90%, transparent);
   letter-spacing: -0.04em;
 }
 
@@ -444,12 +494,12 @@ a:hover {
 }
 
 .badge.autopilot {
-  background: color-mix(in oklab, #8b3a2a 18%, white);
-  color: #8b3a2a;
+  background: color-mix(in oklab, var(--danger) 18%, white);
+  color: var(--danger);
 }
 
 .autopilot-warn {
-  color: #8b3a2a;
+  color: var(--danger);
 }
 
 /* Thread */
@@ -827,7 +877,7 @@ a:hover {
   border: 1px solid color-mix(in oklab, var(--leather) 14%, transparent);
   background:
     linear-gradient(160deg, color-mix(in oklab, var(--bay) 35%, #2a241c), color-mix(in oklab, var(--leather-deep) 80%, #1a1510));
-  color: #f6efe6;
+  color: var(--on-leather);
   display: grid;
   align-content: end;
   padding: 1.1rem 1.2rem;
@@ -856,7 +906,7 @@ a:hover {
   line-height: 1;
   letter-spacing: -0.04em;
   opacity: 0.22;
-  color: #f6efe6;
+  color: var(--on-leather);
   pointer-events: none;
 }
 
@@ -1078,4 +1128,285 @@ a:hover {
   .dictate {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- design system primitives (#87) --- */
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--danger) 40%, transparent);
+}
+
+.btn-danger:hover {
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.field label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: color-mix(in oklab, var(--danger) 45%, transparent);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.compose-panel .field:last-child {
+  margin-bottom: 0;
+}
+
+.alert {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 80%, white);
+  margin: 0 0 1rem;
+  font-size: var(--text-md);
+}
+
+.alert-danger {
+  border-color: color-mix(in oklab, var(--danger) 30%, transparent);
+  background: color-mix(in oklab, var(--danger) 8%, white);
+  color: var(--danger);
+}
+
+.alert-success {
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+  background: color-mix(in oklab, var(--success) 10%, white);
+  color: var(--success);
+}
+
+.alert-warn {
+  border-color: color-mix(in oklab, var(--bay) 28%, transparent);
+  background: color-mix(in oklab, var(--flax) 18%, white);
+  color: var(--leather-deep);
+}
+
+.empty-state {
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  border: 1px dashed color-mix(in oklab, var(--leather) 22%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--card) 55%, transparent);
+}
+
+.empty-state h3 {
+  font-family: var(--font-display);
+  margin: 0 0 0.35rem;
+  font-size: var(--text-lg);
+}
+
+.empty-state p {
+  margin: 0 0 1rem;
+  color: var(--ink-soft);
+}
+
+.needs-stack,
+.object-list,
+.token-list,
+.person-list {
+  display: grid;
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.needs-row,
+.object-row,
+.token-row,
+.person-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.15rem;
+  background: var(--card-raised);
+  border-radius: var(--radius);
+  text-decoration: none;
+  border: 1px solid color-mix(in oklab, var(--leather) 10%, transparent);
+  box-shadow: var(--shadow-1);
+  color: inherit;
+  transition: transform var(--duration-med) var(--ease), border-color var(--duration-med) var(--ease), box-shadow var(--duration-med) var(--ease);
+}
+
+a.needs-row:hover,
+a.object-row:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--bay) 40%, transparent);
+  box-shadow: var(--shadow-3);
+  color: var(--ink);
+}
+
+.needs-row .why,
+.object-row .preview,
+.token-row .meta,
+.person-row .meta {
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+}
+
+.needs-row strong,
+.object-row strong,
+.token-row strong,
+.person-row strong {
+  font-family: var(--font-display);
+  display: block;
+  font-size: var(--text-base);
+}
+
+.needs-row .row-actions,
+.token-row .row-actions,
+.person-row .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: end;
+}
+
+.mark {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  background: color-mix(in oklab, var(--bay) 20%, white);
+  color: var(--leather-deep);
+  flex-shrink: 0;
+}
+
+.mark.seal {
+  background: color-mix(in oklab, var(--bay) 22%, white);
+}
+
+.mark.agent {
+  background: color-mix(in oklab, var(--stable) 18%, white);
+  color: var(--stable);
+}
+
+.mark.warn {
+  background: color-mix(in oklab, var(--flax) 35%, white);
+  color: var(--leather);
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.preset-card {
+  position: relative;
+  display: block;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--card-raised);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+
+.preset-card:has(input:checked),
+.preset-card.is-selected {
+  border-color: var(--bay);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--bay) 35%, transparent);
+}
+
+.preset-card.is-disabled,
+.preset-card:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.preset-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preset-card strong {
+  font-family: var(--font-display);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.preset-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.preset-card .soon {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+.hold-strip,
+.pin-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+}
+
+.desk-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  list-style: none;
 }

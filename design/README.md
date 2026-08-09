@@ -40,7 +40,7 @@ quiet peeks on the desk.
 
 ## Journey + system mocks
 
-- [system.html](./system.html) — design language + enrichment kit
+- [system.html](./system.html) — design language + enrichment kit + **tokens**
 - [desk.html](./desk.html) — blotter / Needs you home
 - [agents.html](./agents.html) — mint ritual + secret drawer
 - [login.html](./login.html) — enter the loft
@@ -54,6 +54,11 @@ python -m http.server 8766
 ```
 
 **Vibe:** oat / leather / bay · Barlow Semi Condensed + Source Sans 3.
+
+**Tokens:** brand → semantic (`--action`, `--success`, `--danger`, `--warn`,
+`--muted`) → type / space / radius / shadow / motion scales in `:root`.
+Primitives: `.field`, `.alert`, `.empty-state`, `.person-row`, `.object-row`,
+`.preset-card`, `.btn-danger`. See [system.html](./system.html).
 
 **Compose constraint:** No free-type authoring box. Compose is **agent-inbound
 only**. Humans seal; agents draft and enrich via MCP (`draft_pidge`,

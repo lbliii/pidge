@@ -13,7 +13,7 @@
     <h1>Draft #{{ message.id }}</h1>
   </div>
 </div>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 {% if message.supersedes_id %}
 <p class="hint">Superseding sealed <a href="/p/{{ message.supersedes_id }}">#{{ message.supersedes_id }}</a> — amend here, then seal again.</p>
 {% end %}
