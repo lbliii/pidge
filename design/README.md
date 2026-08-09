@@ -68,7 +68,8 @@ Primitives: `.field`, `.alert`, `.empty-state`, `.person-row`, `.object-row`,
 
 **Compose constraint:** No free-type authoring box. Compose is **agent-inbound
 only**. Humans seal; agents draft and enrich via MCP (`draft_pidge`,
-`enrich_pidge`).
+`enrich_pidge`). Empty compose is an **agent status hub** (setup / quiet /
+active tokens + harness wall) — see [agent-os-loft.md](./agent-os-loft.md).
 
 ---
 

@@ -14,7 +14,7 @@
   <h2 style="margin-top:0;font-size: var(--text-lg)">Connect an agent</h2>
   <ol class="hint" style="padding-left:1.2rem">
     <li>Mint a token below (shown once).</li>
-    <li>In Cursor: Settings → MCP → add a remote server, or paste into <code>~/.cursor/mcp.json</code>.</li>
+    <li>Paste into your harness — see <a href="/connect">/connect</a> for Cursor, Claude, Codex, ChatGPT.</li>
     <li>Endpoint: <code>{{ mcp_url }}</code></li>
   </ol>
   {% if minted_secret %}
@@ -23,32 +23,20 @@
     Autopilot token minted. This bearer can <strong>seal Pidges over MCP</strong>. Never paste Autopilot tokens into shared chats.
   </div>
   {% else %}
-  <div class="alert alert-success" role="status">Token minted — copy the snippet now. The secret is shown once.</div>
+  <div class="alert alert-success" role="status">Token minted — copy a host snippet now. The secret is shown once.</div>
   {% end %}
-  <p class="hint">Copy this into your MCP config — includes the secret, shown once:</p>
-  <pre><code>{
-  "mcpServers": {
-    "pidge": {
-      "url": "{{ mcp_url }}",
-      "headers": {
-        "Authorization": "Bearer {{ minted_secret }}"
-      }
-    }
-  }
-}</code></pre>
+  <p class="hint">Cursor <code>mcp.json</code>:</p>
+  <pre><code>{{ cursor_snippet }}</code></pre>
+  <p class="hint">Claude Code:</p>
+  <pre><code>{{ claude_code_snippet }}</code></pre>
+  <p class="hint">Codex <code>config.toml</code>:</p>
+  <pre><code>{{ codex_snippet }}</code></pre>
+  <p class="hint">{{ claude_web_blurb }}</p>
+  <p class="hint">{{ chatgpt_blurb }}</p>
   <p class="hint">Token alone: <code>{{ minted_secret }}</code></p>
   {% else %}
-  <p class="hint">After minting, you’ll get a ready-to-paste Cursor snippet with the bearer header filled in.</p>
-  <pre><code>{
-  "mcpServers": {
-    "pidge": {
-      "url": "{{ mcp_url }}",
-      "headers": {
-        "Authorization": "Bearer pidge_at_…"
-      }
-    }
-  }
-}</code></pre>
+  <p class="hint">After minting, host-specific snippets include the bearer. Preview shape (Cursor):</p>
+  <pre><code>{{ cursor_snippet }}</code></pre>
   {% end %}
 </section>
 
@@ -58,7 +46,17 @@
   <div class="field">
     <label for="label">Label</label>
     <input id="label" name="label" value="Secretary" required>
-    <p class="field-hint">Shown on the token list.</p>
+    <p class="field-hint">Shown on compose and the token list.</p>
+  </div>
+  <div class="field">
+    <label for="intended_harness">Intended harness (optional)</label>
+    <select id="intended_harness" name="intended_harness">
+      <option value="">Decide later</option>
+      {% for h in harnesses %}
+      <option value="{{ h.slug }}">{{ h.display_name }}</option>
+      {% end %}
+    </select>
+    <p class="field-hint">Preference until MCP traffic confirms a seen harness.</p>
   </div>
   <p class="hint" style="margin-bottom: 0.35rem">Preset</p>
   <div class="preset-grid">
@@ -98,14 +96,14 @@
 
 {% if tokens %}
 <ul class="token-list" style="margin-top: var(--space-6)">
-  {% for t in tokens %}
+  {% for row in tokens %}
   <li class="token-row">
     <span class="mark agent" aria-hidden="true">A</span>
     <div>
-      <strong>{{ t.label }}</strong>
+      <strong>{{ row.token.label }}</strong>
       <div class="meta">
-        {% if t.revoked_at %}revoked{% else %}active{% end %}
-        · {% set badge = infer_preset(t.scopes) %}
+        {% if row.token.revoked_at %}revoked{% elif row.status == "active" %}active{% else %}quiet{% end %}
+        · {% set badge = row.preset %}
         {% if badge == "autopilot" %}
         <span class="badge autopilot">Autopilot</span>
         {% elif badge %}
@@ -113,18 +111,26 @@
         {% else %}
         <span class="badge draft">custom</span>
         {% end %}
+        {% if row.harness_label %}
+        · {{ row.harness_label }}{% if not row.harness_seen and not row.token.revoked_at %} (intended){% end %}
+        {% end %}
+        {% if row.last_used_label %}
+        · {{ row.last_used_label }}
+        {% elif not row.token.revoked_at %}
+        · never used
+        {% end %}
       </div>
-      <div class="meta">{% for s in t.scopes %}<code>{{ s }}</code> {% end %}</div>
-      {% if badge == "autopilot" and not t.revoked_at %}
+      <div class="meta">{% for s in row.token.scopes %}<code>{{ s }}</code> {% end %}</div>
+      {% if badge == "autopilot" and not row.token.revoked_at %}
       <p class="hint autopilot-warn">Can seal over MCP — never paste into shared chats</p>
       {% end %}
     </div>
     <div class="row-actions">
-      {% if not t.revoked_at %}
+      {% if not row.token.revoked_at %}
       <form method="post" action="/settings/agents">
         {{ csrf_field() }}
         <input type="hidden" name="action" value="revoke">
-        <input type="hidden" name="token_id" value="{{ t.id }}">
+        <input type="hidden" name="token_id" value="{{ row.token.id }}">
         <button class="btn btn-danger" type="submit">Revoke</button>
       </form>
       {% end %}

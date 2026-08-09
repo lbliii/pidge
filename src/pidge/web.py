@@ -44,7 +44,18 @@ from pidge.discovery import (
 from pidge.discovery import (
     dumps as discovery_dumps,
 )
-from pidge.models import AgentClient, User
+from pidge.harness import (
+    HARNESS_CATALOG,
+    chatgpt_connect_blurb,
+    claude_code_mcp_snippet,
+    claude_web_connect_blurb,
+    codex_toml_snippet,
+    cursor_deeplink_hint,
+    cursor_mcp_snippet,
+    harness_display_name,
+)
+from pidge.mcp_harness import McpHarnessMiddleware, current_mcp_client_hints
+from pidge.models import AgentClient, AgentToken, User
 from pidge.services import PidgeService
 from pidge.store import Store, store_from_url
 
@@ -119,8 +130,16 @@ def create_app(
         app.add_middleware(middleware, priority=0)
 
     async def verify_token(token: str) -> AgentClient | None:
-        return service.verify_agent_token(token)
+        hints = current_mcp_client_hints()
+        return service.verify_agent_token(
+            token,
+            client_name=hints.get("client_name"),
+            client_version=hints.get("client_version"),
+            user_agent=hints.get("user_agent"),
+        )
 
+    # Lower priority = outermost: peek /mcp body before Auth calls verify_token.
+    app.add_middleware(McpHarnessMiddleware(), priority=0)
     app.add_middleware(
         AuthMiddleware(AuthConfig(verify_token=verify_token, login_url=None)),
         priority=1,
@@ -439,12 +458,15 @@ def create_app(
     def connect_page(request: Request):
         origin = _loft_origin(request)
         name = _loft_display_name()
+        mcp_url = f"{origin}/mcp"
         return render(
             request,
             "connect.html",
-            mcp_url=f"{origin}/mcp",
+            mcp_url=mcp_url,
             origin=origin,
             tools=server_card(origin, loft_name=name)["tools"],
+            harnesses=HARNESS_CATALOG,
+            **_host_install_snippets(mcp_url, "pidge_at_…"),
         )
 
     @app.route("/")
@@ -587,7 +609,11 @@ def create_app(
         drafts = service.store.list_drafts(user.id)
         if drafts:
             return Redirect(f"/compose/{drafts[0].id}")
-        return render(request, "compose_empty.html")
+        return render(
+            request,
+            "compose_empty.html",
+            **_compose_empty_context(service, user, _mcp_url(request)),
+        )
 
     @app.route("/compose/{draft_id:int}")
     def compose_draft(request: Request, draft_id: int):
@@ -883,23 +909,37 @@ def create_app(
     def _mcp_url(request: Request) -> str:
         return f"{_loft_origin(request)}/mcp"
 
+    def _agents_page(
+        request: Request,
+        user: User,
+        *,
+        minted_secret: str | None = None,
+        minted_preset: str | None = None,
+        error: str | None = None,
+    ):
+        mcp_url = _mcp_url(request)
+        token_placeholder = minted_secret or "pidge_at_…"
+        return render(
+            request,
+            "agents.html",
+            tokens=_token_rows(service.list_agent_tokens(user), include_revoked=True),
+            scopes=sorted(ALL_AGENT_SCOPES),
+            default_preset=DEFAULT_TOKEN_PRESET,
+            infer_preset=infer_preset,
+            minted_secret=minted_secret,
+            minted_preset=minted_preset,
+            mcp_url=mcp_url,
+            harnesses=HARNESS_CATALOG,
+            error=error,
+            **_host_install_snippets(mcp_url, token_placeholder),
+        )
+
     @app.route("/settings/agents")
     def agents_settings(request: Request):
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(
-            request,
-            "agents.html",
-            tokens=service.list_agent_tokens(user),
-            scopes=sorted(ALL_AGENT_SCOPES),
-            default_preset=DEFAULT_TOKEN_PRESET,
-            infer_preset=infer_preset,
-            minted_secret=None,
-            minted_preset=None,
-            mcp_url=_mcp_url(request),
-            error=None,
-        )
+        return _agents_page(request, user)
 
     @app.route("/settings/agents", methods=["POST"], referenced=True)
     async def agents_mint(request: Request):
@@ -926,6 +966,7 @@ def create_app(
             days = AUTOPILOT_TOKEN_TTL_DAYS
         else:
             days = DESK_TOKEN_TTL_DAYS
+        intended = str(form.get("intended_harness", "")).strip() or None
         if error is None:
             try:
                 result = service.mint_agent_token(
@@ -933,6 +974,7 @@ def create_app(
                     label=str(form.get("label", "Agent")),
                     preset=preset,
                     days=days,
+                    intended_harness=intended,
                 )
                 secret = result.secret
                 minted_preset = preset
@@ -940,16 +982,11 @@ def create_app(
                 error = str(exc)
                 secret = None
                 minted_preset = None
-        return render(
+        return _agents_page(
             request,
-            "agents.html",
-            tokens=service.list_agent_tokens(user),
-            scopes=sorted(ALL_AGENT_SCOPES),
-            default_preset=DEFAULT_TOKEN_PRESET,
-            infer_preset=infer_preset,
+            user,
             minted_secret=secret,
             minted_preset=minted_preset,
-            mcp_url=_mcp_url(request),
             error=error,
         )
 
@@ -963,6 +1000,86 @@ def _csp_nonce_middleware() -> CSPNonceMiddleware:
     middleware._script_origins = SCRIPT_ORIGINS
     return middleware
 
+
+def _host_install_snippets(mcp_url: str, token_placeholder: str) -> dict[str, str]:
+    return {
+        "cursor_snippet": cursor_mcp_snippet(mcp_url, token_placeholder),
+        "claude_code_snippet": claude_code_mcp_snippet(mcp_url, token_placeholder),
+        "codex_snippet": codex_toml_snippet(mcp_url, token_placeholder),
+        "claude_web_blurb": claude_web_connect_blurb(mcp_url),
+        "chatgpt_blurb": chatgpt_connect_blurb(mcp_url),
+        "cursor_deeplink_hint": cursor_deeplink_hint(mcp_url),
+    }
+
+
+def _format_relative_time(when: Any) -> str | None:
+    if when is None:
+        return None
+    from datetime import UTC, datetime
+
+    if not isinstance(when, datetime):
+        return str(when)
+    now = datetime.now(UTC)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    delta = now - when
+    secs = int(delta.total_seconds())
+    if secs < 60:
+        return "just now"
+    if secs < 3600:
+        return f"{secs // 60}m ago"
+    if secs < 86400:
+        return f"{secs // 3600}h ago"
+    return f"{secs // 86400}d ago"
+
+
+def _token_row(token: AgentToken) -> dict[str, Any]:
+    seen = token.last_harness
+    intended = token.intended_harness
+    harness_slug = seen or intended
+    harness_label = harness_display_name(
+        harness_slug,
+        client_name=token.last_client_name,
+    )
+    status = "revoked" if token.revoked_at else (
+        "active" if token.last_used_at else "quiet"
+    )
+    return {
+        "token": token,
+        "preset": infer_preset(token.scopes),
+        "status": status,
+        "harness_slug": harness_slug,
+        "harness_label": harness_label if harness_slug else None,
+        "harness_seen": bool(seen),
+        "last_used_label": _format_relative_time(token.last_used_at),
+        "client_name": token.last_client_name,
+    }
+
+
+def _token_rows(
+    tokens: tuple[AgentToken, ...], *, include_revoked: bool = False
+) -> list[dict[str, Any]]:
+    chosen = tokens if include_revoked else tuple(t for t in tokens if t.revoked_at is None)
+    return [_token_row(t) for t in chosen]
+
+
+def _compose_empty_context(
+    service: PidgeService, user: User, mcp_url: str
+) -> dict[str, Any]:
+    rows = _token_rows(service.list_agent_tokens(user))
+    if not rows:
+        mode = "setup"
+    elif any(r["status"] == "active" for r in rows):
+        mode = "active"
+    else:
+        mode = "quiet"
+    return {
+        "compose_mode": mode,
+        "agent_rows": rows,
+        "harnesses": HARNESS_CATALOG,
+        "mcp_url": mcp_url,
+        **_host_install_snippets(mcp_url, "pidge_at_…"),
+    }
 
 def _can_seal(msg: Any) -> bool:
     return _seal_block_reason(msg) is None and getattr(msg, "state", None) == "draft"

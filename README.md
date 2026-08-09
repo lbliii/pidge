@@ -43,9 +43,9 @@ Tokens default to the **Desk** preset (draft, enrich, calendar propose, notes pi
 **Discovery (public):** [https://pidge.lol/connect](https://pidge.lol/connect) · [/llms.txt](https://pidge.lol/llms.txt) · [MCP server card](https://pidge.lol/.well-known/mcp/server-card.json) · [MCP manifest](https://pidge.lol/.well-known/mcp). Credentials still require a human-minted bearer.
 
 1. Log in → **Agents** → mint a token (Desk by default; Autopilot requires an acknowledge checkbox)
-2. Copy the Cursor snippet from that page into `~/.cursor/mcp.json` (URL + `Authorization: Bearer …`)
-3. Enable the `pidge` MCP server, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (or Autopilot `seal_pidge` when intentionally opted in). Discard unwanted drafts with `discard_pidge` (scope `pidge:draft`) or the Discard button on compose/desk — discarded drafts become `revoked` and leave draft lists. Sealed Pidges are immutable: authors revoke or supersede from the thread UI only (agents cannot); revoke hides from inbox/sent without rewriting `content_hash`, and supersede opens a new draft linked via `supersedes_id`.
-
+2. Copy a host snippet (Cursor, Claude Code, Codex, …) from Agents or [/connect](https://pidge.lol/connect) — URL + `Authorization: Bearer …`
+3. Enable the `pidge` MCP server in your harness, then `draft_pidge` → `enrich_pidge` → human **Seal** in the UI (or Autopilot `seal_pidge` when intentionally opted in). Discard unwanted drafts with `discard_pidge` (scope `pidge:draft`) or the Discard button on compose/desk — discarded drafts become `revoked` and leave draft lists. Sealed Pidges are immutable: authors revoke or supersede from the thread UI only (agents cannot); revoke hides from inbox/sent without rewriting `content_hash`, and supersede opens a new draft linked via `supersedes_id`.
+4. Open **Compose** to see which agents are quiet vs active (and which harness last used each token).
 ### MCP curl recipe
 
 Mint a bearer token under **Agents** settings (Desk by default). Desk/Confirm cannot seal; Autopilot with `pidge:seal` can:
