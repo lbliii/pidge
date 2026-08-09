@@ -7,6 +7,7 @@
     <h1>Wall of notes</h1>
   </div>
 </div>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 {% if pins %}
 <ul class="object-list">
   {% for p in pins %}

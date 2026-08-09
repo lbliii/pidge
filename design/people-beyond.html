@@ -46,8 +46,8 @@
       </div>
 
       <p class="lede" style="margin-top: 0">
-        Out-of-loft handles must live here before an agent can address them.
-        This is an address folio — not a CRM.
+        Out-of-loft handles live here so agents can address them on <em>this</em> loft.
+        Address book ≠ delivery — sealed packets stay loft-local until federation.
       </p>
 
       <section class="add-address-panel compose-panel" aria-labelledby="add-address-title">
@@ -55,7 +55,7 @@
         <div class="field">
           <label for="handle">Handle</label>
           <input id="handle" name="handle" placeholder="lucy@elsewhere" />
-          <p class="field-hint">External address the agent will use.</p>
+          <p class="field-hint">Local address label for drafts here — not a path to another loft.</p>
         </div>
         <div class="field">
           <label for="display_name">Display name</label>
@@ -74,7 +74,7 @@
             <span class="mark" aria-hidden="true">M</span>
             <div>
               <strong>Maya</strong>
-              <div class="meta">maya@garden · external</div>
+              <div class="meta">maya@garden · local address · not delivered elsewhere</div>
               <span class="badge share">Accepted</span>
             </div>
           </li>
@@ -82,7 +82,7 @@
             <span class="mark warn" aria-hidden="true">R</span>
             <div>
               <strong>River</strong>
-              <div class="meta">river@coast · external</div>
+              <div class="meta">river@coast · local address · not delivered elsewhere</div>
               <span class="badge draft">Pending</span>
             </div>
           </li>
@@ -93,7 +93,7 @@
         <h3>Empty book · first-run</h3>
         <div class="empty-state" style="max-width: 28rem; margin-inline: auto">
           <h3>Empty book</h3>
-          <p>Add an out-of-loft handle before agents can address them.</p>
+          <p>Add a handle so agents can address them here. Cross-loft delivery waits on federation.</p>
         </div>
       </section>
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -44,7 +43,18 @@ from pidge.discovery import (
 from pidge.discovery import (
     dumps as discovery_dumps,
 )
-from pidge.models import AgentClient, User
+from pidge.harness import (
+    HARNESS_CATALOG,
+    chatgpt_connect_blurb,
+    claude_code_mcp_snippet,
+    claude_web_connect_blurb,
+    codex_toml_snippet,
+    cursor_deeplink_hint,
+    cursor_mcp_snippet,
+    harness_display_name,
+)
+from pidge.mcp_harness import McpHarnessMiddleware, current_mcp_client_hints
+from pidge.models import AgentClient, AgentToken, User
 from pidge.services import PidgeService
 from pidge.store import Store, store_from_url
 
@@ -119,8 +129,16 @@ def create_app(
         app.add_middleware(middleware, priority=0)
 
     async def verify_token(token: str) -> AgentClient | None:
-        return service.verify_agent_token(token)
+        hints = current_mcp_client_hints()
+        return service.verify_agent_token(
+            token,
+            client_name=hints.get("client_name"),
+            client_version=hints.get("client_version"),
+            user_agent=hints.get("user_agent"),
+        )
 
+    # Lower priority = outermost: peek /mcp body before Auth calls verify_token.
+    app.add_middleware(McpHarnessMiddleware(), priority=0)
     app.add_middleware(
         AuthMiddleware(AuthConfig(verify_token=verify_token, login_url=None)),
         priority=1,
@@ -167,7 +185,52 @@ def create_app(
 
     # --- MCP tools (agent write path) --------------------------------------
 
-    @app.tool("draft_pidge", description="Create a draft Pidge from intent and recipients.")
+    @app.tool(
+        "list_directory",
+        description=(
+            "List other people in this loft (discovery). "
+            "Drafting to a loft mate requires an accepted connection — see list_contacts."
+        ),
+    )
+    def list_directory() -> list[dict[str, Any]]:
+        _, owner = require_agent("pidge:draft")
+        return [
+            {"id": u.id, "username": u.username, "display_name": u.display_name}
+            for u in service.directory(owner)
+        ]
+
+    @app.tool(
+        "list_contacts",
+        description=(
+            "List the owner's address book (who you may mail; "
+            "local addressing only — not cross-loft delivery). "
+            "Includes accepted loft connections and external contacts. "
+            "Loft mates appear here only after an introduction is accepted."
+        ),
+    )
+    def list_contacts_tool() -> list[dict[str, Any]]:
+        _, owner = require_agent("pidge:draft")
+        return [
+            {
+                "id": c.id,
+                "kind": c.kind,
+                "status": c.status,
+                "display_name": c.display_name,
+                "external_handle": c.external_handle,
+                "loft_user_id": c.loft_user_id,
+            }
+            for c in service.contacts(owner)
+            if c.status != "blocked"
+        ]
+
+    @app.tool(
+        "draft_pidge",
+        description=(
+            "Create a draft Pidge from intent and recipients. "
+            "Loft recipients must already be connected (accepted introduction); "
+            "use list_contacts for deliverable addresses and list_directory to discover people."
+        ),
+    )
     def draft_pidge(
         intent: str,
         recipients: list[str] | str,
@@ -259,30 +322,13 @@ def create_app(
             ],
         }
 
-    @app.tool("list_directory", description="List other people in this loft.")
-    def list_directory() -> list[dict[str, Any]]:
-        _, owner = require_agent("pidge:draft")
-        return [
-            {"id": u.id, "username": u.username, "display_name": u.display_name}
-            for u in service.directory(owner)
-        ]
-
-    @app.tool("list_contacts", description="List the owner's address book.")
-    def list_contacts_tool() -> list[dict[str, Any]]:
-        _, owner = require_agent("pidge:draft")
-        return [
-            {
-                "id": c.id,
-                "kind": c.kind,
-                "status": c.status,
-                "display_name": c.display_name,
-                "external_handle": c.external_handle,
-                "loft_user_id": c.loft_user_id,
-            }
-            for c in service.contacts(owner)
-        ]
-
-    @app.tool("add_contact", description="Add an external contact to the address book.")
+    @app.tool(
+        "add_contact",
+        description=(
+            "Add an external contact for local addressing on this loft "
+            "(not cross-loft delivery)."
+        ),
+    )
     def add_contact_tool(handle: str, display_name: str = "") -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
         contact = service.add_external_contact(owner, handle=handle, display_name=display_name)
@@ -439,12 +485,15 @@ def create_app(
     def connect_page(request: Request):
         origin = _loft_origin(request)
         name = _loft_display_name()
+        mcp_url = f"{origin}/mcp"
         return render(
             request,
             "connect.html",
-            mcp_url=f"{origin}/mcp",
+            mcp_url=mcp_url,
             origin=origin,
             tools=server_card(origin, loft_name=name)["tools"],
+            harnesses=HARNESS_CATALOG,
+            **_host_install_snippets(mcp_url, "pidge_at_…"),
         )
 
     @app.route("/")
@@ -587,7 +636,11 @@ def create_app(
         drafts = service.store.list_drafts(user.id)
         if drafts:
             return Redirect(f"/compose/{drafts[0].id}")
-        return render(request, "compose_empty.html")
+        return render(
+            request,
+            "compose_empty.html",
+            **_compose_empty_context(service, user, _mcp_url(request)),
+        )
 
     @app.route("/compose/{draft_id:int}")
     def compose_draft(request: Request, draft_id: int):
@@ -823,9 +876,61 @@ def create_app(
         if not isinstance(user, User):
             return user
         form = await request.form()
-        with contextlib.suppress(PermissionError, LookupError, ValueError):
+        try:
             service.accept_connection(user, int(form.get("request_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "people.html",
+                **_people_loft_context(service, user, error=str(exc)),
+            )
         return Redirect("/people")
+
+    @app.route("/directory/decline", methods=["POST"], referenced=True)
+    async def directory_decline(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            service.decline_connection(user, int(form.get("request_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "people.html",
+                **_people_loft_context(service, user, error=str(exc)),
+            )
+        return Redirect("/people")
+
+    @app.route("/directory/block", methods=["POST"], referenced=True)
+    async def directory_block(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            request_id = form.get("request_id")
+            if request_id:
+                service.block_connection_request(user, int(request_id))
+            else:
+                service.block_loft_user(user, username=str(form.get("username", "")))
+            error = None
+        except (PermissionError, LookupError, ValueError) as exc:
+            error = str(exc)
+        return render(request, "people.html", **_people_loft_context(service, user, error=error))
+
+    @app.route("/directory/unblock", methods=["POST"], referenced=True)
+    async def directory_unblock(request: Request):
+        user = _gate(request, require_human)
+        if not isinstance(user, User):
+            return user
+        form = await request.form()
+        try:
+            service.unblock_loft_user(user, username=str(form.get("username", "")))
+            error = None
+        except (LookupError, ValueError) as exc:
+            error = str(exc)
+        return render(request, "people.html", **_people_loft_context(service, user, error=error))
 
     @app.route("/contacts")
     def contacts_page(request: Request):
@@ -868,7 +973,9 @@ def create_app(
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(request, "wall.html", pins=service.store.list_pins(user.id))
+        return render(
+            request, "wall.html", pins=service.store.list_pins(user.id), error=None
+        )
 
     @app.route("/wall/pin", methods=["POST"], referenced=True)
     async def wall_pin(request: Request):
@@ -876,30 +983,51 @@ def create_app(
         if not isinstance(user, User):
             return user
         form = await request.form()
-        with contextlib.suppress(PermissionError, LookupError, ValueError):
+        try:
             service.pin_note(user, int(form.get("pidge_id", "0")))
+        except (PermissionError, LookupError, ValueError) as exc:
+            return render(
+                request,
+                "wall.html",
+                pins=service.store.list_pins(user.id),
+                error=str(exc),
+            )
         return Redirect("/wall")
 
     def _mcp_url(request: Request) -> str:
         return f"{_loft_origin(request)}/mcp"
+
+    def _agents_page(
+        request: Request,
+        user: User,
+        *,
+        minted_secret: str | None = None,
+        minted_preset: str | None = None,
+        error: str | None = None,
+    ):
+        mcp_url = _mcp_url(request)
+        token_placeholder = minted_secret or "pidge_at_…"
+        return render(
+            request,
+            "agents.html",
+            tokens=_token_rows(service.list_agent_tokens(user), include_revoked=True),
+            scopes=sorted(ALL_AGENT_SCOPES),
+            default_preset=DEFAULT_TOKEN_PRESET,
+            infer_preset=infer_preset,
+            minted_secret=minted_secret,
+            minted_preset=minted_preset,
+            mcp_url=mcp_url,
+            harnesses=HARNESS_CATALOG,
+            error=error,
+            **_host_install_snippets(mcp_url, token_placeholder),
+        )
 
     @app.route("/settings/agents")
     def agents_settings(request: Request):
         user = _gate(request, require_human)
         if not isinstance(user, User):
             return user
-        return render(
-            request,
-            "agents.html",
-            tokens=service.list_agent_tokens(user),
-            scopes=sorted(ALL_AGENT_SCOPES),
-            default_preset=DEFAULT_TOKEN_PRESET,
-            infer_preset=infer_preset,
-            minted_secret=None,
-            minted_preset=None,
-            mcp_url=_mcp_url(request),
-            error=None,
-        )
+        return _agents_page(request, user)
 
     @app.route("/settings/agents", methods=["POST"], referenced=True)
     async def agents_mint(request: Request):
@@ -909,8 +1037,10 @@ def create_app(
         form = await request.form()
         action = str(form.get("action", "mint"))
         if action == "revoke":
-            with contextlib.suppress(LookupError):
+            try:
                 service.revoke_agent_token(user, int(form.get("token_id", "0")))
+            except (LookupError, ValueError) as exc:
+                return _agents_page(request, user, error=str(exc))
             return Redirect("/settings/agents")
         preset = str(form.get("preset", DEFAULT_TOKEN_PRESET)).strip() or DEFAULT_TOKEN_PRESET
         error = None
@@ -926,6 +1056,7 @@ def create_app(
             days = AUTOPILOT_TOKEN_TTL_DAYS
         else:
             days = DESK_TOKEN_TTL_DAYS
+        intended = str(form.get("intended_harness", "")).strip() or None
         if error is None:
             try:
                 result = service.mint_agent_token(
@@ -933,6 +1064,7 @@ def create_app(
                     label=str(form.get("label", "Agent")),
                     preset=preset,
                     days=days,
+                    intended_harness=intended,
                 )
                 secret = result.secret
                 minted_preset = preset
@@ -940,16 +1072,11 @@ def create_app(
                 error = str(exc)
                 secret = None
                 minted_preset = None
-        return render(
+        return _agents_page(
             request,
-            "agents.html",
-            tokens=service.list_agent_tokens(user),
-            scopes=sorted(ALL_AGENT_SCOPES),
-            default_preset=DEFAULT_TOKEN_PRESET,
-            infer_preset=infer_preset,
+            user,
             minted_secret=secret,
             minted_preset=minted_preset,
-            mcp_url=_mcp_url(request),
             error=error,
         )
 
@@ -963,6 +1090,86 @@ def _csp_nonce_middleware() -> CSPNonceMiddleware:
     middleware._script_origins = SCRIPT_ORIGINS
     return middleware
 
+
+def _host_install_snippets(mcp_url: str, token_placeholder: str) -> dict[str, str]:
+    return {
+        "cursor_snippet": cursor_mcp_snippet(mcp_url, token_placeholder),
+        "claude_code_snippet": claude_code_mcp_snippet(mcp_url, token_placeholder),
+        "codex_snippet": codex_toml_snippet(mcp_url, token_placeholder),
+        "claude_web_blurb": claude_web_connect_blurb(mcp_url),
+        "chatgpt_blurb": chatgpt_connect_blurb(mcp_url),
+        "cursor_deeplink_hint": cursor_deeplink_hint(mcp_url),
+    }
+
+
+def _format_relative_time(when: Any) -> str | None:
+    if when is None:
+        return None
+    from datetime import UTC, datetime
+
+    if not isinstance(when, datetime):
+        return str(when)
+    now = datetime.now(UTC)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    delta = now - when
+    secs = int(delta.total_seconds())
+    if secs < 60:
+        return "just now"
+    if secs < 3600:
+        return f"{secs // 60}m ago"
+    if secs < 86400:
+        return f"{secs // 3600}h ago"
+    return f"{secs // 86400}d ago"
+
+
+def _token_row(token: AgentToken) -> dict[str, Any]:
+    seen = token.last_harness
+    intended = token.intended_harness
+    harness_slug = seen or intended
+    harness_label = harness_display_name(
+        harness_slug,
+        client_name=token.last_client_name,
+    )
+    status = "revoked" if token.revoked_at else (
+        "active" if token.last_used_at else "quiet"
+    )
+    return {
+        "token": token,
+        "preset": infer_preset(token.scopes),
+        "status": status,
+        "harness_slug": harness_slug,
+        "harness_label": harness_label if harness_slug else None,
+        "harness_seen": bool(seen),
+        "last_used_label": _format_relative_time(token.last_used_at),
+        "client_name": token.last_client_name,
+    }
+
+
+def _token_rows(
+    tokens: tuple[AgentToken, ...], *, include_revoked: bool = False
+) -> list[dict[str, Any]]:
+    chosen = tokens if include_revoked else tuple(t for t in tokens if t.revoked_at is None)
+    return [_token_row(t) for t in chosen]
+
+
+def _compose_empty_context(
+    service: PidgeService, user: User, mcp_url: str
+) -> dict[str, Any]:
+    rows = _token_rows(service.list_agent_tokens(user))
+    if not rows:
+        mode = "setup"
+    elif any(r["status"] == "active" for r in rows):
+        mode = "active"
+    else:
+        mode = "quiet"
+    return {
+        "compose_mode": mode,
+        "agent_rows": rows,
+        "harnesses": HARNESS_CATALOG,
+        "mcp_url": mcp_url,
+        **_host_install_snippets(mcp_url, "pidge_at_…"),
+    }
 
 def _can_seal(msg: Any) -> bool:
     return _seal_block_reason(msg) is None and getattr(msg, "state", None) == "draft"
@@ -1391,6 +1598,18 @@ def _people_loft_context(service: PidgeService, user: User, *, error: str | None
     raw_requests = service.store.list_connection_requests(user.id)
     introductions: list[dict[str, Any]] = []
     pending_usernames: set[str] = set()
+    connected_usernames: set[str] = set()
+    blocked_usernames: set[str] = set()
+    for contact in service.contacts(user):
+        if contact.kind != "loft_user" or contact.loft_user_id is None:
+            continue
+        mate = _safe_user(service, contact.loft_user_id)
+        if mate is None:
+            continue
+        if contact.status == "accepted":
+            connected_usernames.add(mate.username)
+        elif contact.status == "blocked":
+            blocked_usernames.add(mate.username)
     for req in raw_requests:
         if req.to_user_id is None:
             # External address-book claims belong on Beyond, not loft intros.
@@ -1418,6 +1637,8 @@ def _people_loft_context(service: PidgeService, user: User, *, error: str | None
         "introductions": introductions,
         "pending_intro_count": sum(1 for i in introductions if i["status"] == "pending"),
         "pending_usernames": pending_usernames,
+        "connected_usernames": connected_usernames,
+        "blocked_usernames": blocked_usernames,
         "error": error,
     }
 

@@ -1,0 +1,5 @@
+{
+  "name": "pidge",
+  "description": "Structured mail via a Pidge loft MCP server — draft, enrich, propose seal.",
+  "version": "0.1.0"
+}

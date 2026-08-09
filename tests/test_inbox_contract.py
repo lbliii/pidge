@@ -12,6 +12,7 @@ from pidge.config import PidgeConfig
 from pidge.services import PidgeService
 from pidge.store import MemoryStore
 from pidge.web import SESSION_COOKIE, create_app
+from tests.helpers import connect_loft_mates
 
 pytestmark = pytest.mark.asyncio
 
@@ -156,6 +157,8 @@ async def test_sealed_invite_appears_in_recipient_inbox_and_rsvp(
         # Re-login owner: Lucy registration replaced the session cookie.
         owner_cookies = await _login(client, username="owner", password="password-long")
         owner = service.store.get_user_by_username("owner")
+        lucy = service.store.get_user_by_username("lucy")
+        connect_loft_mates(service, owner, lucy)
         minted = service.mint_agent_token(owner, label="Nowadays Secretary")
 
         drafted = await client.post(
@@ -262,6 +265,8 @@ async def test_draft_not_visible_in_recipient_inbox(app, service: PidgeService) 
         await _bootstrap_owner(client)
         lucy_cookies = await _register_lucy(client)
         owner = service.store.get_user_by_username("owner")
+        lucy = service.store.get_user_by_username("lucy")
+        connect_loft_mates(service, owner, lucy)
         service.draft_pidge(
             owner,
             intent="Secret draft for Lucy",

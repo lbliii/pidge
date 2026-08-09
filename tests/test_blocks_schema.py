@@ -7,6 +7,7 @@ import pytest
 from pidge.config import PidgeConfig
 from pidge.services import PidgeService
 from pidge.store import MemoryStore
+from tests.helpers import connect_loft_mates
 
 @pytest.fixture
 def store() -> MemoryStore:
@@ -42,6 +43,7 @@ def _setup_loft(service: PidgeService):
     lucy = service.register(
         username="lucy", display_name="Lucy", password="password-long"
     )
+    connect_loft_mates(service, result.user, lucy.user)
     return result.user, lucy.user
 
 

@@ -19,7 +19,10 @@ MCP_PROTOCOL_VERSION = "2025-06-18"
 MCP_TOOLS: tuple[dict[str, str], ...] = (
     {
         "name": "draft_pidge",
-        "description": "Create a draft Pidge from intent and recipients.",
+        "description": (
+            "Create a draft Pidge from intent and recipients. "
+            "Loft recipients must already be connected."
+        ),
         "scopes": "pidge:draft",
     },
     {
@@ -44,17 +47,27 @@ MCP_TOOLS: tuple[dict[str, str], ...] = (
     },
     {
         "name": "list_directory",
-        "description": "List other people in this loft.",
+        "description": (
+            "List other people in this loft (discovery). "
+            "Drafting requires an accepted connection."
+        ),
         "scopes": "pidge:draft",
     },
     {
         "name": "list_contacts",
-        "description": "List the owner's address book.",
+        "description": (
+            "List the owner's address book (who you may mail; "
+            "local addressing only — not cross-loft delivery). "
+            "Includes accepted loft connections and external contacts."
+        ),
         "scopes": "pidge:draft",
     },
     {
         "name": "add_contact",
-        "description": "Add an external contact to the address book.",
+        "description": (
+            "Add an external contact for local addressing on this loft "
+            "(not cross-loft delivery)."
+        ),
         "scopes": "pidge:draft",
     },
     {
@@ -200,10 +213,11 @@ def llms_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "",
         "## Connect",
         "",
-        f"- [Connect guide]({origin}/connect): human mints a bearer, then paste MCP snippet",
+        f"- [Connect guide]({origin}/connect): human mints a bearer; host-specific install matrix",
         f"- [MCP endpoint]({endpoint}): streamable HTTP; Authorization: Bearer pidge_at_…",
         f"- [Agents settings]({origin}/settings/agents): mint Desk / Draft / Confirm / Autopilot tokens",
         f"- [Health]({origin}/livez): liveness probe",
+        f"- Compatible hosts: Cursor, Claude Code, Claude.ai, Codex, ChatGPT Apps",
         "",
         "## Discovery",
         "",
@@ -217,6 +231,12 @@ def llms_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "- Desk (default): draft, enrich, propose holds, pin notes — human seals in UI",
         "- Confirm: Desk + propose_seal (one-shot human challenge URL)",
         "- Autopilot: Confirm + seal_pidge over MCP — never paste into shared chats",
+        "",
+        "## Addressing",
+        "",
+        "- Same loft: `list_directory` — local members",
+        "- Beyond: `list_contacts` / `add_contact` — local address book only",
+        "- Address book ≠ delivery: sealed packets stay on this loft until federation",
         "",
         "## Optional",
         "",
@@ -242,7 +262,7 @@ def llms_full_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "",
         "## Cursor snippet",
         "",
-        "After minting under /settings/agents, paste:",
+        "After minting under /settings/agents, paste (also Claude Code / Codex / ChatGPT on /connect):",
         "",
         "```json",
         "{",
@@ -256,6 +276,10 @@ def llms_full_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "  }",
         "}",
         "```",
+        "",
+        "## Claude plugin",
+        "",
+        f"- Skills pack: {GITHUB_REPO}/tree/main/plugins/claude-pidge",
         "",
         "## Smoke test (after mint)",
         "",
@@ -280,6 +304,7 @@ def llms_full_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "- Expect anonymous MCP — bearer required",
         "- Call seal_pidge without an Autopilot token the human knowingly minted",
         "- Paste Autopilot secrets into shared chats or tickets",
+        "- Treat Beyond contacts as delivery to another loft — address book is local only",
         "",
     ]
     return "\n".join(body)

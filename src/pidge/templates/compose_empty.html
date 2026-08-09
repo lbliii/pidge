@@ -4,9 +4,19 @@
 <div class="page-head">
   <div>
     <p class="kicker">Draft → enrich → seal</p>
-    <h1>Waiting on your agent</h1>
+    {% if compose_mode == "setup" %}
+    <h1>Connect an agent</h1>
+    {% elif compose_mode == "quiet" %}
+    <h1>Agents minted — waiting for a draft</h1>
+    {% else %}
+    <h1>Your agents are ready</h1>
+    {% end %}
   </div>
+  {% if compose_mode == "setup" %}
   <a class="btn btn-seal" href="/settings/agents">Mint an agent token</a>
+  {% else %}
+  <a class="btn btn-ghost" href="/settings/agents">Manage agents</a>
+  {% end %}
 </div>
 
 <div class="steps-rail" aria-label="Compose progress">
@@ -20,6 +30,8 @@
     There is no compose box. Agents write intents via MCP; this desk watches
     enriching and seals.
   </p>
+
+  {% if compose_mode == "setup" %}
   <h2>Path from agent to seal</h2>
   <div class="pillars">
     <article>
@@ -35,11 +47,71 @@
     </article>
     <article>
       <h3>3. Seal</h3>
-      <p>When slots are ready, you seal here. Agents cannot seal.</p>
+      <p>When slots are ready, you seal here. Agents cannot seal (unless Autopilot).</p>
     </article>
   </div>
+  {% elif compose_mode == "quiet" %}
+  <h2>Minted but quiet</h2>
+  <p class="hint">
+    Tokens exist, but none have called MCP yet. Paste a snippet into your
+    harness, then ask it to <code>draft_pidge</code>.
+  </p>
+  {% else %}
+  <h2>Active agents</h2>
+  <p class="hint">
+    Draft from the harness below. When a packet lands, this page becomes the
+    enrich → seal desk.
+  </p>
+  {% end %}
+
+  {% if agent_rows %}
+  <ul class="agent-status-list" aria-label="Agent tokens">
+    {% for row in agent_rows %}
+    <li class="agent-status-row">
+      <span class="mark agent" aria-hidden="true">A</span>
+      <div>
+        <strong>{{ row.token.label }}</strong>
+        <div class="meta">
+          {% if row.preset == "autopilot" %}
+          <span class="badge autopilot">Autopilot</span>
+          {% elif row.preset %}
+          <span class="badge draft">{{ row.preset.capitalize() }}</span>
+          {% else %}
+          <span class="badge draft">custom</span>
+          {% end %}
+          {% if row.harness_label %}
+          · {{ row.harness_label }}{% if not row.harness_seen %} (intended){% end %}
+          {% end %}
+          {% if row.last_used_label %}
+          · {{ row.last_used_label }}
+          {% elif row.status == "quiet" %}
+          · never used
+          {% end %}
+        </div>
+      </div>
+    </li>
+    {% end %}
+  </ul>
+  {% end %}
+
+  <h2>Compatible harnesses</h2>
+  <p class="hint">Pidge speaks MCP. Pick the host you already use.</p>
+  <div class="harness-wall" role="list">
+    {% for h in harnesses %}
+    <a class="harness-tile" role="listitem" href="/connect#{{ h.install_anchor }}">
+      <span class="harness-mark" aria-hidden="true">{{ h.short_mark }}</span>
+      <strong>{{ h.display_name }}</strong>
+      <span class="hint">{{ h.blurb }}</span>
+    </a>
+    {% end %}
+  </div>
+
   <div class="actions">
+    {% if compose_mode == "setup" %}
     <a class="btn btn-seal" href="/settings/agents">Open Agents</a>
+    {% else %}
+    <a class="btn btn-seal" href="/connect">Install guides</a>
+    {% end %}
     <a class="btn btn-ghost" href="/">Back to desk</a>
   </div>
 </div>

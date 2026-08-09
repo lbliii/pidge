@@ -9,7 +9,7 @@
 </div>
 <p class="lede">
   Discovery is public. Credentials are not. A loft member mints a scoped bearer,
-  then your agent speaks MCP.
+  then your agent speaks MCP. Pidge does not run the agent — your host does.
 </p>
 
 <section class="compose-panel" style="margin-bottom: var(--space-6)">
@@ -17,7 +17,7 @@
   <ol class="hint" style="padding-left:1.2rem">
     <li><a href="/login">Log in</a> (or <a href="/register">register</a> if invited).</li>
     <li>Open <a href="/settings/agents">Agents</a> and mint <strong>Desk</strong> (default).</li>
-    <li>Copy the Cursor snippet — the secret is shown once.</li>
+    <li>Copy the host-specific snippet — the secret is shown once.</li>
   </ol>
   <p class="hint">
     Desk can draft/enrich/propose; humans still seal in the UI.
@@ -26,20 +26,56 @@
 </section>
 
 <section class="compose-panel" style="margin-bottom: var(--space-6)">
-  <h2 style="margin-top:0;font-size: var(--text-lg)">2. Point MCP at this loft</h2>
-  <p class="hint">Endpoint:</p>
+  <h2 style="margin-top:0;font-size: var(--text-lg)">2. Compatible harnesses</h2>
+  <div class="harness-wall" role="list">
+    {% for h in harnesses %}
+    <a class="harness-tile" role="listitem" href="#{{ h.install_anchor }}">
+      <span class="harness-mark" aria-hidden="true">{{ h.short_mark }}</span>
+      <strong>{{ h.display_name }}</strong>
+      <span class="hint">{{ h.blurb }}</span>
+    </a>
+    {% end %}
+  </div>
+  <p class="hint" style="margin-top: var(--space-4)">Endpoint for all hosts:</p>
   <pre><code>{{ mcp_url }}</code></pre>
-  <p class="hint">Snippet shape:</p>
-  <pre><code>{
-  "mcpServers": {
-    "pidge": {
-      "url": "{{ mcp_url }}",
-      "headers": {
-        "Authorization": "Bearer pidge_at_…"
-      }
-    }
-  }
-}</code></pre>
+</section>
+
+<section class="compose-panel" id="host-cursor" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Cursor</h2>
+  <p class="hint">{{ cursor_deeplink_hint }}</p>
+  <p class="hint">Paste into <code>~/.cursor/mcp.json</code> or project <code>.cursor/mcp.json</code>:</p>
+  <pre><code>{{ cursor_snippet }}</code></pre>
+</section>
+
+<section class="compose-panel" id="host-claude-code" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Claude Code</h2>
+  <p class="hint">Remote HTTP MCP in user or project config (or <code>claude mcp add</code> equivalent):</p>
+  <pre><code>{{ claude_code_snippet }}</code></pre>
+  <p class="hint">
+    Skills pack for mail vocabulary:
+    <a href="https://github.com/lbliii/pidge/tree/main/plugins/claude-pidge">plugins/claude-pidge</a>
+    — teach draft → enrich → propose seal.
+  </p>
+</section>
+
+<section class="compose-panel" id="host-claude-web" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Claude.ai / mobile</h2>
+  <p class="hint">{{ claude_web_blurb }}</p>
+</section>
+
+<section class="compose-panel" id="host-codex" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Codex</h2>
+  <p class="hint">Prefer streamable HTTP in <code>~/.codex/config.toml</code> (not stdio):</p>
+  <pre><code>{{ codex_snippet }}</code></pre>
+</section>
+
+<section class="compose-panel" id="host-chatgpt" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">ChatGPT (Apps / Developer mode)</h2>
+  <p class="hint">{{ chatgpt_blurb }}</p>
+  <p class="hint">
+    Store-grade OAuth for ChatGPT Apps / Claude directory is tracked separately
+    (saga Agent OS loft). DIY Desk bearer remains the path until then.
+  </p>
 </section>
 
 <section class="compose-panel" style="margin-bottom: var(--space-6)">
@@ -58,6 +94,16 @@
     <li><a href="/.well-known/mcp/server-card.json"><code>/.well-known/mcp/server-card.json</code></a></li>
     <li><a href="/.well-known/mcp"><code>/.well-known/mcp</code></a></li>
   </ul>
+</section>
+
+<section class="compose-panel" style="margin-bottom: var(--space-6)">
+  <h2 style="margin-top:0;font-size: var(--text-lg)">Addressing</h2>
+  <p class="hint">
+    <code>list_directory</code> is this loft. <code>list_contacts</code> /
+    <code>add_contact</code> are a local address book so agents can put
+    external handles on drafts here. That is not cross-loft delivery —
+    sealed packets stay on this loft until federation.
+  </p>
 </section>
 
 <section class="compose-panel">

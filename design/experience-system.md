@@ -29,11 +29,11 @@ Shell: Desk · Mail · People · Account
 | **Desk** | Route attention — one stack for decisions | `/` | blotter · Needs you + quiet peeks | `.needs-row`, `.quiet-strip`, hold/pin peeks | empty / needs seal / enriching / needs act |
 | **Mail** | Browse sealed traffic | `/inbox` · `/sent` | page-head + `.segmented` + list | `.segmented`, `.msg` / `.object-row`, `.empty-state` | In · Out; empty loft |
 | **People** | Address graph for agents + humans | `/people` · `/people/address-book` | page-head + `.segmented` + folio | `.segmented`, `.person-row`, introductions tray, add-address panel | loft empty; pending intro; address book empty |
-| **Workflow** | Build a packet until seal | `/compose`, `/compose/{id}` | compose-panel + enriching rail | slots, `.enrich-stack`, `.flight-rail`, seal CTA | draft / enriching / ready / blocked |
+| **Workflow** | Build a packet until seal; **agent status hub** when empty | `/compose`, `/compose/{id}` | compose-panel + enriching rail · harness wall | slots, `.enrich-stack`, `.flight-rail`, seal CTA, `.harness-wall`, `.agent-status-row` | draft / enriching / ready / blocked · setup / quiet / active |
 | **Object** | Projection of one sealed Pidge | `/p/{id}` | thread-layout + bubble | recipient-bar, kind acts, enrich stack, (later) stamp + cancellation | sealed / revoked / superseded / acted |
 | **Residue** | Quiet aftermath of seals | `/calendar` · `/wall` | object lists | `.object-row`, pin / hold cards | empty residue |
-| **Rituals** | Trust + delight under Account | `/settings/agents` · stamps (later) | preset / album | `.preset-card`, secret drawer, stamp grid | mint once / revoked |
-| **Discovery** | Public agent onboarding (no credentials) | `/connect` · `/llms.txt` · `/.well-known/mcp*` | connect brief + plain text/JSON | lede, compose-panel, tool list | guest |
+| **Rituals** | Trust + delight under Account | `/settings/agents` · stamps (later) | preset / album | `.preset-card`, secret drawer, stamp grid, harness + last-used on tokens | mint once / revoked / quiet / active |
+| **Discovery** | Public agent onboarding (no credentials) | `/connect` · `/llms.txt` · `/.well-known/mcp*` | connect brief + host install matrix | lede, compose-panel, harness wall, tool list | guest |
 
 ### Cross-links (intentional)
 
@@ -41,8 +41,25 @@ Shell: Desk · Mail · People · Account
 - Mail → Thread (object canvas)
 - People → Compose addressing (via agents); introductions stay on People
 - Object → Calendar hold / Wall pin (acts leave residue)
-- Account → Agents (MCP), Stamps (album), Calendar, Wall
+- Account → Agents (MCP mint), Stamps (album), Calendar, Wall
+- Compose empty → Agents mint · `/connect` harness install · active token status
 - Discovery → `/connect` · `/llms.txt` · MCP well-known (public; mint still behind Agents)
+
+### Compose as agent status hub
+
+Compose stays **agent-inbound** (no free-type box). When there are no drafts,
+`/compose` is the status blotter:
+
+| Mode | Meaning |
+|------|---------|
+| **setup** | No tokens — mint + harness logo wall |
+| **quiet** | Tokens exist, never used over MCP |
+| **active** | Tokens have `last_used_at` / seen harness |
+
+Harness attribution comes from MCP `clientInfo` / `User-Agent` (and optional
+mint-time intended harness). Pidge does **not** own the agent loop.
+
+Tracked: saga [#121](https://github.com/lbliii/pidge/issues/121).
 
 ---
 
@@ -63,12 +80,13 @@ under a shared page-head.
 
 **Metaphor:** loft directory + address book — not a CRM, not a glossary.
 
-- **In the loft** — same-deployment members; addressable without a friend
-  edge; optional connection request as social “introduction.”
-- **Beyond the loft** — external handles agents may address only after the
-  human adds them.
+- **In the loft** — same-deployment members; **visible** for discovery; **mail
+  only after an accepted introduction** (permission gate, not optional glue).
+- **Beyond the loft** — external handles agents may address on this loft only
+  after the human adds them. Address book ≠ delivery; cross-loft delivery is
+  federation (later).
 - **Introductions tray** — pending connection requests with **names**, never
-  raw user IDs.
+  raw user IDs; Accept / Decline / Block.
 - **Add an address** — bounded form panel on the Beyond facet only.
 
 Canonical routes: `/people`, `/people/address-book`. Legacy `/directory` and
@@ -103,15 +121,15 @@ Tracked under foundation saga [#97](https://github.com/lbliii/pidge/issues/97)
 2. ~~**Out / delivery** — post-seal ceremony~~ (#94)
 3. ~~**Mail stance badges** — `Invite · needs act` vocabulary~~ (#94)
 4. ~~**Agent discovery** — `/connect`, `llms.txt`, MCP well-known cards~~
-5. **Honesty & errors** — kill silent failure (#98)
-6. **Architecture spine** — decompose `web.py` / service boundary (#103)
-7. **Store confidence** — Postgres path + shared helpers (#109)
-8. **Calendar / Wall / Agents rituals** — residue first-class (#113)
-9. **Invite-only loft trust** — private loft gate (#118)
-10. **Stamp affix** — cancellation + face on sealed bubble (#78; after #113)
+5. ~~**Agent OS loft** — compose status hub + host distribution~~ (#121 ship-first)
+6. **Honesty & errors** — kill silent failure (#98; #99/#102 done)
+7. **Architecture spine** — decompose `web.py` / service boundary (#103)
+8. **Store confidence** — Postgres path + shared helpers (#109)
+9. **Calendar / Wall / Agents rituals** — residue first-class (#113)
+10. **Invite-only loft trust** — private loft gate (#118)
+11. **Stamp affix** — cancellation + face on sealed bubble (#78; after #113)
 
 ---
-
 ## Success check
 
 Someone can open Mail and see a leather pill facet; open People and feel an

@@ -151,6 +151,7 @@ class PidgeService:
         scopes: frozenset[str] | None = None,
         preset: str | None = None,
         days: int | None = 90,
+        intended_harness: str | None = None,
     ) -> AgentTokenResult:
         if scopes is not None:
             chosen = frozenset(scopes)
@@ -165,12 +166,18 @@ class PidgeService:
             raise ValueError(f"Unknown scopes: {', '.join(sorted(unknown))}")
         secret = f"pidge_at_{secrets.token_urlsafe(32)}"
         expires = datetime.now(UTC) + timedelta(days=days) if days else None
+        from pidge.harness import KNOWN_HARNESS_SLUGS, HARNESS_OTHER
+
+        intent = (intended_harness or "").strip() or None
+        if intent and intent not in KNOWN_HARNESS_SLUGS:
+            intent = HARNESS_OTHER
         token = self.store.create_agent_token(
             user_id=user.id,
             token_hash_value=token_hash(secret),
             label=(label.strip() or "Agent")[:80],
             scopes=chosen,
             expires_at=expires,
+            intended_harness=intent,
         )
         return AgentTokenResult(token, secret)
 
@@ -180,14 +187,58 @@ class PidgeService:
     def revoke_agent_token(self, user: User, token_id: int) -> None:
         self.store.revoke_agent_token(user.id, token_id)
 
-    def verify_agent_token(self, raw_token: str) -> AgentClient | None:
+    def verify_agent_token(
+        self,
+        raw_token: str,
+        *,
+        client_name: str | None = None,
+        client_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> AgentClient | None:
         now = datetime.now(UTC)
         found = self.store.agent_client_for_token(token_hash(raw_token), now)
         if found is None:
             return None
         client, token_id = found
-        self.store.touch_agent_token(token_id, now)
+        harness_kwargs: dict[str, str] = {}
+        if client_name or client_version or user_agent:
+            from pidge.harness import normalize_harness
+
+            slug, name, version = normalize_harness(
+                client_name=client_name,
+                client_version=client_version,
+                user_agent=user_agent,
+            )
+            harness_kwargs["last_harness"] = slug
+            if name:
+                harness_kwargs["last_client_name"] = name
+            if version:
+                harness_kwargs["last_client_version"] = version
+        self.store.touch_agent_token(token_id, now, **harness_kwargs)
         return client
+
+    def record_agent_harness(
+        self,
+        token_id: int,
+        *,
+        client_name: str | None = None,
+        client_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> None:
+        """Update harness attribution for an already-authenticated agent token."""
+        from pidge.harness import normalize_harness
+
+        slug, name, version = normalize_harness(
+            client_name=client_name,
+            client_version=client_version,
+            user_agent=user_agent,
+        )
+        kwargs: dict[str, str] = {"last_harness": slug}
+        if name:
+            kwargs["last_client_name"] = name
+        if version:
+            kwargs["last_client_version"] = version
+        self.store.touch_agent_token(token_id, datetime.now(UTC), **kwargs)
 
     def agent_token_revoked(self, token_id: int) -> bool:
         return self.store.is_agent_token_revoked(token_id)
@@ -231,6 +282,19 @@ class PidgeService:
         target = self.store.get_user_by_username(username.strip().casefold())
         if target.id == viewer.id:
             raise ValueError("You are already in the loft.")
+        if self._loft_block_between(viewer.id, target.id):
+            raise PermissionError("Cannot introduce — this connection is blocked.")
+        if self._loft_contact(viewer.id, target.id, status="accepted") is not None:
+            raise ValueError(f"Already connected with {target.display_name}.")
+        for req in self.store.list_connection_requests(viewer.id):
+            if req.status != "pending" or req.to_user_id is None:
+                continue
+            if req.from_user_id == viewer.id and req.to_user_id == target.id:
+                raise ValueError(f"Introduction to {target.display_name} already sent.")
+            if req.from_user_id == target.id and req.to_user_id == viewer.id:
+                raise ValueError(
+                    f"{target.display_name} already introduced you — accept on People."
+                )
         return self.store.create_connection_request(
             ConnectionRequest(
                 id=0,
@@ -246,16 +310,37 @@ class PidgeService:
     def accept_connection(self, viewer: User, request_id: int) -> Contact:
         return self.store.accept_connection_request(request_id, viewer.id)
 
+    def decline_connection(self, viewer: User, request_id: int) -> None:
+        self.store.decline_connection_request(request_id, viewer.id)
+
+    def block_loft_user(self, viewer: User, *, username: str) -> Contact:
+        target = self.store.get_user_by_username(username.strip().casefold())
+        if target.id == viewer.id:
+            raise ValueError("You cannot block yourself.")
+        return self.store.block_loft_connection(viewer.id, target.id)
+
+    def block_connection_request(self, viewer: User, request_id: int) -> Contact:
+        return self.store.block_from_connection_request(request_id, viewer.id)
+
+    def unblock_loft_user(self, viewer: User, *, username: str) -> None:
+        target = self.store.get_user_by_username(username.strip().casefold())
+        contact = self._loft_contact(viewer.id, target.id, status="blocked")
+        if contact is None:
+            raise LookupError(f"No block on {target.display_name}.")
+        self.store.delete_contact(contact.id)
+
     def can_address(
         self, sender: User, *, loft_user_id: int | None = None, contact_id: int | None = None
     ) -> bool:
         if loft_user_id is not None:
-            # Same loft: any active user is addressable without a friend edge.
+            # Same loft: deliver only after an accepted connection (not pending).
             try:
                 user = self.store.get_user(loft_user_id)
             except LookupError:
                 return False
-            return user.status == "active" and user.id != sender.id
+            if user.status != "active" or user.id == sender.id:
+                return False
+            return self._loft_contact(sender.id, loft_user_id, status="accepted") is not None
         if contact_id is not None:
             try:
                 contact = self.store.get_contact(contact_id)
@@ -267,6 +352,23 @@ class PidgeService:
                 and contact.kind == "external"
             )
         return False
+
+    def _loft_contact(
+        self, owner_user_id: int, loft_user_id: int, *, status: str | None = None
+    ) -> Contact | None:
+        for contact in self.store.list_contacts(owner_user_id):
+            if contact.kind != "loft_user" or contact.loft_user_id != loft_user_id:
+                continue
+            if status is not None and contact.status != status:
+                continue
+            return contact
+        return None
+
+    def _loft_block_between(self, a_id: int, b_id: int) -> bool:
+        return (
+            self._loft_contact(a_id, b_id, status="blocked") is not None
+            or self._loft_contact(b_id, a_id, status="blocked") is not None
+        )
 
     def resolve_target_name(self, sender: User, name: str) -> PidgeRecipient:
         needle = name.strip()
@@ -332,6 +434,11 @@ class PidgeService:
                 loft_user_id=recipient.loft_user_id,
                 contact_id=recipient.contact_id,
             ):
+                if recipient.loft_user_id is not None:
+                    raise PermissionError(
+                        f"Cannot address {recipient.display_name}: not connected. "
+                        "Introduce via People, then draft after they accept."
+                    )
                 raise PermissionError(f"Cannot address {recipient.display_name}.")
         slots: dict[str, Any] = {
             "who": {"status": "pending", "value": None},

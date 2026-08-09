@@ -17,7 +17,7 @@
 
 {% if facet == "loft" %}
 <p class="lede" style="margin-top: 0">
-  Same loft — addressable without a friend edge. Introductions are optional social glue, not a permission gate.
+  Visible in the loft. Mail only after you’re connected.
 </p>
 
 <div class="people-folio">
@@ -32,17 +32,40 @@
       <span class="mark seal" aria-hidden="true">{{ (person.display_name or "?")[:1] }}</span>
       <div>
         <strong>{{ person.display_name }}</strong>
-        <div class="meta">@{{ person.username }} · addressable</div>
+        <div class="meta">@{{ person.username }}{% if person.username in connected_usernames %} · connected{% elif person.username in blocked_usernames %} · blocked{% else %} · visible{% end %}</div>
+        {% if person.username in connected_usernames %}
+        <span class="badge share">Connected</span>
+        {% elif person.username in blocked_usernames %}
+        <span class="badge kind">Blocked</span>
+        {% else %}
         <span class="badge ready">In loft</span>
+        {% end %}
       </div>
       <div class="row-actions">
-        {% if person.username in pending_usernames %}
+        {% if person.username in blocked_usernames %}
+        <form method="post" action="/directory/unblock">
+          {{ csrf_field() }}
+          <input type="hidden" name="username" value="{{ person.username }}">
+          <button class="btn btn-ghost" type="submit">Unblock</button>
+        </form>
+        {% elif person.username in connected_usernames %}
+        <form method="post" action="/directory/block">
+          {{ csrf_field() }}
+          <input type="hidden" name="username" value="{{ person.username }}">
+          <button class="btn btn-ghost" type="submit">Block</button>
+        </form>
+        {% elif person.username in pending_usernames %}
         <span class="hint" style="margin: 0">Introduction sent</span>
         {% else %}
         <form method="post" action="/directory/connect">
           {{ csrf_field() }}
           <input type="hidden" name="username" value="{{ person.username }}">
           <button class="btn btn-ghost" type="submit">Introduce</button>
+        </form>
+        <form method="post" action="/directory/block">
+          {{ csrf_field() }}
+          <input type="hidden" name="username" value="{{ person.username }}">
+          <button class="btn btn-ghost" type="submit">Block</button>
         </form>
         {% end %}
       </div>
@@ -52,7 +75,7 @@
   {% else %}
   <div class="empty-state">
     <h3>You’re the only one here</h3>
-    <p>Invite someone to register into this loft — then agents can address them.</p>
+    <p>Invite someone to register into this loft — then introduce them before agents can mail them.</p>
     <a class="btn btn-seal" href="/register">Open register</a>
   </div>
   {% end %}
@@ -80,6 +103,16 @@
           <input type="hidden" name="request_id" value="{{ intro['id'] }}">
           <button class="btn btn-seal" type="submit">Accept</button>
         </form>
+        <form method="post" action="/directory/decline">
+          {{ csrf_field() }}
+          <input type="hidden" name="request_id" value="{{ intro['id'] }}">
+          <button class="btn btn-ghost" type="submit">Decline</button>
+        </form>
+        <form method="post" action="/directory/block">
+          {{ csrf_field() }}
+          <input type="hidden" name="request_id" value="{{ intro['id'] }}">
+          <button class="btn btn-ghost" type="submit">Block</button>
+        </form>
         {% end %}
       </div>
     </li>
@@ -88,14 +121,15 @@
   {% else %}
   <div class="empty-state">
     <h3>No introductions yet</h3>
-    <p>Connection asks from loft mates will land here — with names, not IDs.</p>
+    <p>Connection asks from loft mates will land here — accept before they can mail you.</p>
   </div>
   {% end %}
 </section>
 
 {% else %}
 <p class="lede" style="margin-top: 0">
-  Out-of-loft handles must live here before an agent can address them. This is an address folio — not a CRM.
+  Out-of-loft handles live here so agents can address them on <em>this</em> loft.
+  Address book ≠ delivery — sealed packets stay loft-local until federation.
 </p>
 
 <section class="add-address-panel compose-panel" aria-labelledby="add-address-title">
@@ -105,7 +139,7 @@
     <div class="field">
       <label for="handle">Handle</label>
       <input id="handle" name="handle" required placeholder="lucy@elsewhere">
-      <p class="field-hint">External address the agent will use.</p>
+      <p class="field-hint">Local address label for drafts here — not a path to another loft.</p>
     </div>
     <div class="field">
       <label for="display_name">Display name</label>
@@ -128,7 +162,7 @@
       <div>
         <strong>{{ c.display_name }}</strong>
         <div class="meta">
-          {% if c.external_handle %}{{ c.external_handle }} · {% end %}beyond the loft
+          {% if c.external_handle %}{{ c.external_handle }} · {% end %}local address · not delivered elsewhere
         </div>
         <span class="badge {% if c.status == 'pending' %}draft{% elif c.status == 'accepted' %}share{% else %}kind{% end %}">{{ c.status.title() }}</span>
       </div>
@@ -138,7 +172,7 @@
   {% else %}
   <div class="empty-state">
     <h3>Empty book</h3>
-    <p>Add an out-of-loft handle before agents can address them.</p>
+    <p>Add a handle so agents can address them here. Cross-loft delivery waits on federation.</p>
   </div>
   {% end %}
 </div>
