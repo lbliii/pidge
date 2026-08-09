@@ -1396,7 +1396,24 @@ def _clear_session_cookie(config: PidgeConfig) -> SetCookie:
 
 
 def _allowed_hosts(config: PidgeConfig) -> tuple[str, ...]:
-    if not config.public_origin:
-        return ("*",)
-    host = urlparse(config.public_origin).hostname
-    return (host,) if host else ("*",)
+    """Accept the canonical origin plus Railway-provided public hostnames."""
+    import os
+
+    hosts: list[str] = []
+    if config.public_origin:
+        host = urlparse(config.public_origin).hostname
+        if host:
+            hosts.append(host)
+    for key in ("RAILWAY_PUBLIC_DOMAIN", "RAILWAY_STATIC_URL", "RAILWAY_SERVICE_WEB_URL"):
+        raw = (os.environ.get(key) or "").strip()
+        if not raw:
+            continue
+        if "://" in raw:
+            parsed = urlparse(raw).hostname
+            if parsed:
+                hosts.append(parsed)
+        else:
+            hosts.append(raw.split("/", 1)[0])
+    # De-dupe, preserve order.
+    unique = tuple(dict.fromkeys(h for h in hosts if h))
+    return unique or ("*",)
