@@ -145,13 +145,39 @@ def create_app(
 
     @app.tool("draft_pidge", description="Create a draft Pidge from intent and recipients.")
     def draft_pidge(
-        intent: str, recipients: list[str] | str, summary: str = ""
+        intent: str,
+        recipients: list[str] | str,
+        summary: str = "",
+        kind: str = "invite",
     ) -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
-        msg = service.draft_pidge(owner, intent=intent, recipient_names=recipients, summary=summary)
-        return {"id": msg.id, "state": msg.state, "summary": msg.summary, "intent": msg.intent}
+        names = (
+            [recipients]
+            if isinstance(recipients, str)
+            else list(recipients)
+        )
+        msg = service.draft_pidge(
+            owner,
+            intent=intent,
+            recipient_names=names,
+            summary=summary,
+            kind=kind,
+        )
+        return {
+            "id": msg.id,
+            "state": msg.state,
+            "summary": msg.summary,
+            "intent": msg.intent,
+            "kind": msg.kind,
+        }
 
-    @app.tool("enrich_pidge", description="Fill structured slots on a draft Pidge.")
+    @app.tool(
+        "enrich_pidge",
+        description=(
+            "Fill structured slots on a draft Pidge. "
+            "Optional extras may include blocks: [{type, ...}] (place/map/menu/reviews/article)."
+        ),
+    )
     def enrich_pidge(
         pidge_id: int,
         who: str | None = None,
@@ -170,7 +196,13 @@ def create_app(
             extras=extras,
             mark_none=tuple(mark_none or ()),
         )
-        return {"id": msg.id, "summary": msg.summary, "slots": msg.slots, "state": msg.state}
+        return {
+            "id": msg.id,
+            "summary": msg.summary,
+            "slots": msg.slots,
+            "state": msg.state,
+            "kind": msg.kind,
+        }
 
     @app.tool("list_drafts", description="List the owner's draft Pidges.")
     def list_drafts() -> list[dict[str, Any]]:
@@ -195,6 +227,7 @@ def create_app(
             "state": msg.state,
             "summary": msg.summary,
             "intent": msg.intent,
+            "kind": msg.kind,
             "slots": msg.slots,
             "recipients": [
                 {"display_name": r.display_name, "loft_user_id": r.loft_user_id, "contact_id": r.contact_id}
@@ -572,7 +605,9 @@ def create_app(
             is_recipient=any(
                 r.loft_user_id == user.id for r in service.store.recipients_for(msg.id)
             ),
+            kind_label=_kind_label(msg.kind),
             error=None,
+            **_enrich_view(msg),
         )
 
     @app.route("/p/{pidge_id:int}/revoke", methods=["POST"], referenced=True)
@@ -616,7 +651,9 @@ def create_app(
                 acts=service.store.list_acts(msg.id),
                 is_author=msg.author_id == user.id,
                 is_recipient=True,
+                kind_label=_kind_label(msg.kind),
                 error=str(exc),
+                **_enrich_view(msg),
             )
         return Redirect(f"/p/{pidge_id}")
 
@@ -818,9 +855,153 @@ def _seal_block_reason(msg: Any) -> str | None:
     return f"Seal blocked — waiting on {', '.join(missing)} via enrich_pidge."
 
 
+def _enrich_view(msg: Any, *, skel: bool = False) -> dict[str, Any]:
+    """Build fact-strip + block views for enrich-stack templates."""
+    slots = getattr(msg, "slots", {}) or {}
+    facts: list[dict[str, str]] = []
+    for key, label in (("who", "Who"), ("when", "When"), ("where", "Where")):
+        slot = slots.get(key)
+        if isinstance(slot, dict) and slot.get("status") == "ready" and slot.get("value"):
+            facts.append({"label": label, "value": str(slot["value"])})
+
+    extras_slot = slots.get("extras")
+    extras_value = extras_slot.get("value") if isinstance(extras_slot, dict) else None
+    raw_blocks: list[Any] = []
+    leftover: dict[str, Any] = {}
+    if isinstance(extras_value, dict):
+        maybe_blocks = extras_value.get("blocks")
+        if isinstance(maybe_blocks, list):
+            raw_blocks = maybe_blocks
+        leftover = {k: v for k, v in extras_value.items() if k != "blocks"}
+    elif extras_value is not None:
+        leftover = {"extras": extras_value}
+
+    blocks: list[dict[str, Any]] = []
+    for block in raw_blocks:
+        if not isinstance(block, dict):
+            continue
+        btype = str(block.get("type") or "")
+        skipped = block.get("status") == "skipped" or bool(block.get("degraded"))
+        if skipped:
+            blocks.append(
+                {
+                    "variant": "degraded",
+                    "label": btype or "Block",
+                    "blurb": str(
+                        block.get("blurb")
+                        or block.get("detail")
+                        or "Couldn’t fetch — seal still OK."
+                    ),
+                    "meta": "skipped",
+                }
+            )
+            continue
+        if btype == "place":
+            title = str(block.get("title") or "Place")
+            blocks.append(
+                {
+                    "variant": "place",
+                    "title": title,
+                    "blurb": block.get("blurb") or "",
+                    "has_art": bool(block.get("image")),
+                    "mark": title[:1].upper() or "P",
+                    "meta": "place" + (" · fetched" if block.get("fetched_at") else ""),
+                }
+            )
+        elif btype == "map":
+            meta = ""
+            if block.get("lat") is not None and block.get("lng") is not None:
+                meta = f"{block.get('lat')} · {block.get('lng')}"
+            blocks.append(
+                {
+                    "variant": "map",
+                    "title": str(block.get("address") or block.get("title") or "Map"),
+                    "meta": meta,
+                }
+            )
+        elif btype == "menu":
+            items = block.get("items") if isinstance(block.get("items"), list) else []
+            blocks.append(
+                {
+                    "variant": "menu",
+                    "title": str(block.get("title") or "Menu"),
+                    "items": [str(i) for i in items],
+                    "blurb": str(block.get("blurb") or ""),
+                }
+            )
+        elif btype == "reviews":
+            rating = block.get("rating")
+            title = str(rating) if rating is not None else ""
+            if block.get("blurb"):
+                title = f"{title} · “{block.get('blurb')}”" if title else str(block.get("blurb"))
+            blocks.append(
+                {
+                    "variant": "reviews",
+                    "title": title or "Reviews",
+                    "rating": rating,
+                }
+            )
+        elif btype in {"article", "link"}:
+            blocks.append(
+                {
+                    "variant": "article",
+                    "label": "Article" if btype == "article" else "Link",
+                    "title": str(block.get("title") or "Shared link"),
+                    "blurb": str(block.get("blurb") or ""),
+                    "meta": str(block.get("source_url") or ""),
+                }
+            )
+        else:
+            blocks.append(
+                {
+                    "variant": "article",
+                    "label": btype or "Block",
+                    "title": str(block.get("title") or btype or "Note"),
+                    "blurb": str(block.get("blurb") or block.get("note") or ""),
+                    "meta": "",
+                }
+            )
+
+    if not raw_blocks:
+        where = slots.get("where")
+        if isinstance(where, dict) and where.get("status") == "ready" and where.get("value"):
+            title = str(where["value"])
+            blocks.append(
+                {
+                    "variant": "place",
+                    "title": title,
+                    "blurb": "",
+                    "has_art": False,
+                    "mark": title[:1].upper() or "P",
+                    "meta": "place · from slots",
+                }
+            )
+        for key, val in leftover.items():
+            blocks.append(
+                {
+                    "variant": "article",
+                    "label": str(key),
+                    "title": str(val),
+                    "blurb": "",
+                    "meta": "",
+                }
+            )
+
+    return {
+        "enrich_facts": facts,
+        "enrich_blocks": blocks,
+        "enrich_skel": skel,
+    }
+
+
+def _kind_label(kind: str) -> str:
+    return (kind or "invite").replace("_", " ").title()
+
+
 def _compose_context(service: PidgeService, msg: Any, *, error: str | None = None) -> dict[str, Any]:
     flight = service.store.get_flight_for_pidge(msg.id)
     steps = service.store.list_flight_steps(flight.id) if flight else ()
+    enriching = bool(flight and flight.state == "flying")
     return {
         "message": msg,
         "recipients": service.store.recipients_for(msg.id),
@@ -829,6 +1010,8 @@ def _compose_context(service: PidgeService, msg: Any, *, error: str | None = Non
         "can_seal": _can_seal(msg),
         "seal_block_reason": _seal_block_reason(msg),
         "error": error,
+        "kind_label": _kind_label(getattr(msg, "kind", "invite")),
+        **_enrich_view(msg, skel=enriching and not _can_seal(msg)),
     }
 
 

@@ -353,3 +353,46 @@
     transform: none;
   }
 }
+
+/* --- production port: enrich skeleton (#73) --- */
+
+.enrich-stack.is-skel .place-hero,
+.enrich-stack.is-skel .map-block,
+.enrich-stack.is-skel .menu-block,
+.enrich-stack.is-skel .reviews-block,
+.enrich-stack.is-skel .article-block {
+  position: relative;
+  overflow: hidden;
+  min-height: 5.5rem;
+}
+
+.enrich-stack.is-skel .place-hero::after,
+.enrich-stack.is-skel .map-block::after,
+.enrich-stack.is-skel .menu-block::after,
+.enrich-stack.is-skel .reviews-block::after,
+.enrich-stack.is-skel .article-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--flax) 25%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: sheen 1.2s ease-in-out infinite;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .enrich-stack.is-skel .place-hero::after,
+  .enrich-stack.is-skel .map-block::after,
+  .enrich-stack.is-skel .menu-block::after,
+  .enrich-stack.is-skel .reviews-block::after,
+  .enrich-stack.is-skel .article-block::after {
+    animation: none;
+    transform: none;
+    opacity: 0.35;
+  }
+}

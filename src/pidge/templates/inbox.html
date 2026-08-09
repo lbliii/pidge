@@ -1,12 +1,17 @@
 {% extends "layout.html" %}
-{% block title %}Inbox — Pidge{% end %}
+{% block title %}Mail — Pidge{% end %}
 {% block page_content %}
 <div class="page-head">
   <div>
     <p class="kicker">Your graph</p>
-    <h1>Inbox</h1>
+    <h1>Mail</h1>
   </div>
-  <a class="btn btn-seal" href="/compose">New Pidge</a>
+  <a class="btn btn-seal" href="/compose">Open compose</a>
+</div>
+
+<div class="segmented" role="tablist" aria-label="Mail facet">
+  <a href="/inbox" class="is-active" aria-current="page">In</a>
+  <a href="/sent">Out</a>
 </div>
 
 {% if messages %}
@@ -16,12 +21,9 @@
     <div class="msg-avatar{% if m.state == 'sealed' %} seal{% end %}">{{ (m.author_name or "?")[:1] }}</div>
     <div>
       <strong>{{ m.summary }}</strong>
-      <div class="preview">From {{ m.author_name }} · {% if m.intent %}{{ m.intent }}{% else %}invite sealed{% end %}</div>
-      {% if m.state == "sealed" %}
-      <span class="badge invite">Invite · sealed</span>
-      {% else %}
-      <span class="badge">{{ m.state }}</span>
-      {% end %}
+      <div class="preview">From {{ m.author_name }} · {% if m.intent %}{{ m.intent }}{% else %}sealed{% end %}</div>
+      {% set k = m.kind if m.kind else "invite" %}
+      <span class="badge {{ k }}">{{ k.replace("_", " ").title() }} · {{ m.state }}</span>
     </div>
     <time{% if m.sealed_at %} datetime="{{ m.sealed_at.isoformat() }}"{% end %}>
       {% if m.sealed_at %}{{ m.sealed_at.strftime("%-I:%M %p") }}{% elif m.updated_at %}{{ m.updated_at.strftime("%-I:%M %p") }}{% else %}—{% end %}

@@ -6,7 +6,10 @@
 {% set rsvp_yes = "rsvp_yes" in act_kinds %}
 {% set rsvp_no = "rsvp_no" in act_kinds %}
 {% set declined = "decline" in act_kinds %}
-{% set settled = rsvp_yes or rsvp_no or declined %}
+{% set acked = "ack" in act_kinds %}
+{% set settled = rsvp_yes or rsvp_no or declined or acked %}
+{% set kind_name = kind_label if kind_label else "Invite" %}
+{% set kind_slug = message.kind if message.kind else "invite" %}
 
 {% if is_recipient and viewer %}
 <div class="recipient-bar">
@@ -14,24 +17,25 @@
     <strong>{{ viewer.display_name }}’s Pidge</strong>
     <div class="mono" style="font-size: 0.8rem; color: var(--mist)">{{ viewer.username }} · recipient graph</div>
   </div>
-  <a class="btn btn-ghost" href="/inbox">Inbox</a>
+  <a class="btn btn-ghost" href="/inbox">Mail</a>
 </div>
 {% end %}
 
 <div class="page-head">
   <div>
     <p class="kicker">
-      {% if message.state == "revoked" %}Invite · revoked
-      {% elif message.state == "superseded" %}Invite · superseded
-      {% elif settled and rsvp_yes %}{% if is_author %}Your thread · settled{% else %}Invite · accepted{% end %}
-      {% elif settled %}{% if declined %}Invite · declined{% else %}Invite · noted{% end %}
-      {% elif message.state == "sealed" %}Invite · sealed
+      {% if message.state == "revoked" %}{{ kind_name }} · revoked
+      {% elif message.state == "superseded" %}{{ kind_name }} · superseded
+      {% elif settled and rsvp_yes %}{% if is_author %}Your thread · settled{% else %}{{ kind_name }} · accepted{% end %}
+      {% elif settled and acked %}{{ kind_name }} · acked
+      {% elif settled %}{% if declined %}{{ kind_name }} · declined{% else %}{{ kind_name }} · noted{% end %}
+      {% elif message.state == "sealed" %}{{ kind_name }} · sealed
       {% else %}{{ message.state }}
       {% end %}
     </p>
     <h1>{{ message.summary }}</h1>
   </div>
-  <a class="btn btn-ghost" href="/inbox">Inbox</a>
+  <a class="btn btn-ghost" href="/inbox">Mail</a>
 </div>
 
 {% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
@@ -46,12 +50,12 @@
 
 {% if message.state == "sealed" or message.state == "draft" %}
 <div class="steps-rail" aria-label="Thread status">
-  <span class="step-chip is-done">Dictated</span>
-  <span class="step-chip is-done">Flew</span>
+  <span class="step-chip is-done">Drafted</span>
+  <span class="step-chip is-done">Enriched</span>
   <span class="step-chip{% if message.state == 'sealed' or message.content_hash %} is-done{% elif message.state == 'draft' %} is-active{% end %}">Sealed</span>
   <span class="step-chip{% if message.state == 'sealed' %} is-done{% end %}">Delivered</span>
-  <span class="step-chip{% if rsvp_yes %} is-done is-active{% elif settled %} is-done{% elif message.state == 'sealed' %} is-active{% end %}">
-    {% if rsvp_yes %}Accepted{% elif rsvp_no %}Maybe{% elif declined %}Declined{% else %}RSVP{% end %}
+  <span class="step-chip{% if settled %} is-done is-active{% elif message.state == 'sealed' %} is-active{% end %}">
+    {% if rsvp_yes %}Accepted{% elif rsvp_no %}Maybe{% elif declined %}Declined{% elif acked %}Acked{% else %}Acted{% end %}
   </span>
 </div>
 {% end %}
@@ -60,12 +64,15 @@
   <article class="bubble">
     <header>
       <div>
-        <span class="from">
-          {% if is_author %}You{% else %}{{ message.author_name }}{% end %}
-          {% if recipients %} → {% for r in recipients %}{{ r.display_name }}{% if not loop.last %}, {% end %}{% end %}{% end %}
-        </span>
+        <div class="kind-row">
+          <span class="from">
+            {% if is_author %}You{% else %}{{ message.author_name }}{% end %}
+            {% if recipients %} → {% for r in recipients %}{{ r.display_name }}{% if not loop.last %}, {% end %}{% end %}{% end %}
+          </span>
+          <span class="badge {{ kind_slug }}">{{ kind_name }} · {% if message.state == "sealed" %}sealed{% else %}{{ message.state }}{% end %}</span>
+        </div>
         <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
-          invite · pidge:{{ message.id }}{% if message.content_hash %} · {{ message.content_hash[:8] }}{% end %}
+          {{ kind_slug }} · pidge:{{ message.id }}{% if message.content_hash %} · {{ message.content_hash[:8] }}{% end %}
         </div>
       </div>
       {% if message.content_hash and message.state == "sealed" %}
@@ -73,63 +80,38 @@
       {% elif message.state == "sealed" %}
       <span class="verified">Sealed</span>
       {% else %}
-      <span class="badge">{{ message.state }}</span>
+      <span class="badge draft">{{ message.state }}</span>
       {% end %}
     </header>
 
     <p class="intent">“{{ message.intent }}”</p>
 
-    <div class="cards">
-      {% set when = message.slots.get("when") %}
-      {% set where = message.slots.get("where") %}
-      {% set who = message.slots.get("who") %}
-      {% set extras = message.slots.get("extras") %}
-      <div class="card">
-        <h3>When</h3>
-        {% if when and when.value %}
-        <p>{{ when.value }}</p>
-        {% elif when %}
-        <p class="mono">{{ when.status }}</p>
-        {% else %}
-        <p class="mono">—</p>
-        {% end %}
-      </div>
-      <div class="card map-card">
-        <h3>Where</h3>
-        <div class="map-pin" aria-hidden="true"></div>
-        {% if where and where.value %}
-        <p>{{ where.value }}</p>
-        {% elif where %}
-        <p class="mono">{{ where.status }}</p>
-        {% else %}
-        <p class="mono">—</p>
-        {% end %}
-      </div>
-      <div class="card">
-        <h3>{% if extras and extras.value %}Extras{% else %}Who{% end %}</h3>
-        {% if extras and extras.value %}
-        <p>{{ extras.value }}</p>
-        {% elif who and who.value %}
-        <p>{{ who.value }}</p>
-        {% elif who %}
-        <p class="mono">{{ who.status }}</p>
-        {% else %}
-        <p class="mono">—</p>
-        {% end %}
-      </div>
-    </div>
+    {% include "_enrich_stack.html" %}
 
     {% if message.content_hash %}
     <p class="hint" style="margin-top: 1rem; margin-bottom: 0">Seal hash <code>{{ message.content_hash[:16] }}…</code></p>
     {% end %}
 
     {% if is_recipient and message.state == "sealed" and not settled %}
-    <form method="post" action="/p/{{ message.id }}/act" class="rsvp-choice">
-      {{ csrf_field() }}
-      <button class="is-yes" name="kind" value="rsvp_yes" type="submit">RSVP yes</button>
-      <button name="kind" value="rsvp_no" type="submit">RSVP no</button>
-      <button name="kind" value="decline" type="submit">Decline</button>
-    </form>
+      {% if kind_slug == "invite" %}
+      <form method="post" action="/p/{{ message.id }}/act" class="act-choice">
+        {{ csrf_field() }}
+        <button class="is-yes" name="kind" value="rsvp_yes" type="submit">Accept</button>
+        <button name="kind" value="rsvp_no" type="submit">Maybe</button>
+        <button name="kind" value="decline" type="submit">Decline</button>
+      </form>
+      {% elif kind_slug == "share" %}
+      <form method="post" action="/p/{{ message.id }}/act" class="act-choice act-share">
+        {{ csrf_field() }}
+        <button class="is-ack" name="kind" value="ack" type="submit">Ack</button>
+        <button name="kind" value="pin" type="submit">Pin</button>
+      </form>
+      {% else %}
+      <form method="post" action="/p/{{ message.id }}/act" class="act-choice act-share">
+        {{ csrf_field() }}
+        <button class="is-ack" name="kind" value="ack" type="submit">Ack</button>
+      </form>
+      {% end %}
     {% end %}
   </article>
 
@@ -140,14 +122,17 @@
     {% end %}
     <header>
       <div>
-        <span class="from">
-          {% if rsvp_yes %}RSVP sealed{% elif rsvp_no %}Maybe{% else %}Declined{% end %}
-        </span>
+        <div class="kind-row">
+          <span class="from">
+            {% if rsvp_yes %}RSVP sealed{% elif rsvp_no %}Maybe{% elif declined %}Declined{% elif acked %}Acked{% else %}Acted{% end %}
+          </span>
+          <span class="badge">Result · {% if rsvp_yes %}accepted{% elif declined %}declined{% elif acked %}acked{% else %}noted{% end %}</span>
+        </div>
         <div class="mono" style="font-size: 0.8rem; color: var(--mist); margin-top: 0.15rem">
           act · pidge:{{ message.id }}
         </div>
       </div>
-      {% if rsvp_yes %}
+      {% if rsvp_yes or acked %}
       <span class="verified">Verified</span>
       {% elif rsvp_no %}
       <span class="verified">Noted</span>
@@ -164,6 +149,8 @@
     </p>
     {% elif rsvp_no %}
     <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">Tentative hold noted. They can upgrade to Accept anytime.</p>
+    {% elif acked %}
+    <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">Acknowledged — packet filed.</p>
     {% else %}
     <p style="margin: 0 0 0.85rem; color: var(--ink-soft)">Sealed decline rides back — no guilt prose required.</p>
     {% end %}

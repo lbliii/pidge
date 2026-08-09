@@ -137,7 +137,7 @@ async def test_compose_page_wires_sse_without_self_swap(
         emitted = {evt.event or "message" for evt in stream.events}
         assert "flight_rail" in emitted
         assert "compose_live" in emitted
-        assert any("Flight" in evt.data for evt in stream.events)
+        assert any("Enriching" in evt.data for evt in stream.events)
         assert any("slot-list" in evt.data for evt in stream.events)
 
 
