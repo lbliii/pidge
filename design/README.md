@@ -30,6 +30,9 @@ Primary chrome: **Desk · Mail · People · Account** (Agents · Stamps under Ac
 Compose is a state, not a permanent top-level tab. Calendar and wall are
 quiet peeks on the desk.
 
+**Experience architecture:** [experience-system.md](./experience-system.md) —
+layers, layout families, facet contracts, People subsystem, next waves.
+
 ## Demo flow (object mail)
 
 1. [compose.html](./compose.html) — Draft → Enrich → Seal (rich preview + one degraded block)
@@ -41,6 +44,8 @@ quiet peeks on the desk.
 ## Journey + system mocks
 
 - [system.html](./system.html) — design language + enrichment kit + **tokens**
+- [experience-system.md](./experience-system.md) — layers · families · facets
+- [people.html](./people.html) — People hub · loft + address book
 - [desk.html](./desk.html) — blotter / Needs you home
 - [agents.html](./agents.html) — mint ritual + secret drawer
 - [login.html](./login.html) — enter the loft

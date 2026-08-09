@@ -135,6 +135,94 @@ async def test_register_second_user_and_directory(app, service: PidgeService) ->
     assert any(u.username == "lucy" for u in people)
 
 
+async def test_people_hub_introduce_accept_and_address_book(app, service: PidgeService) -> None:
+    async with TestClient(app) as client:
+        owner_cookies = await _setup_owner(client)
+        register = await client.get("/register", headers={"Cookie": owner_cookies})
+        await client.post(
+            "/register",
+            data={
+                "_csrf_token": _csrf(register),
+                "username": "lucy",
+                "display_name": "Lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": owner_cookies},
+        )
+
+        people = await client.get("/people", headers={"Cookie": owner_cookies})
+        assert people.status == 200
+        assert "Lucy" in people.text
+        assert "@lucy" in people.text
+        assert "from_user_id" not in people.text
+        assert "#1" not in people.text or "Introduce" in people.text
+
+        intro = await client.post(
+            "/directory/connect",
+            data={"_csrf_token": _csrf(people), "username": "lucy"},
+            headers={"Cookie": owner_cookies},
+        )
+        assert intro.status == 200
+        assert "Introduction sent" in intro.text or "Introduction to Lucy" in intro.text
+        assert "Lucy" in intro.text
+        assert "from 1 →" not in intro.text
+
+        # Log in as Lucy and accept.
+        login = await client.get("/login")
+        lucy_resp = await client.post(
+            "/login",
+            data={
+                "_csrf_token": _csrf(login),
+                "username": "lucy",
+                "password": "password-long",
+            },
+            headers={"Cookie": _cookie(login, "chirp_session") or ""},
+        )
+        lucy_cookie = _cookie(lucy_resp, SESSION_COOKIE)
+        chirp = _cookie(lucy_resp, "chirp_session") or _cookie(login, "chirp_session")
+        assert lucy_cookie is not None
+        lucy_cookies = f"{chirp}; {lucy_cookie}"
+
+        lucy_people = await client.get("/people", headers={"Cookie": lucy_cookies})
+        assert lucy_people.status == 200
+        assert "Owner wants to connect" in lucy_people.text
+        assert "Accept" in lucy_people.text
+
+        accept = await client.post(
+            "/directory/accept",
+            data={
+                "_csrf_token": _csrf(lucy_people),
+                "request_id": str(service.store.list_connection_requests(
+                    service.store.get_user_by_username("lucy").id
+                )[0].id),
+            },
+            headers={"Cookie": lucy_cookies},
+        )
+        assert accept.status == 302
+        assert any(
+            h.lower() == "location" and v == "/people" for h, v in accept.headers
+        )
+
+        book = await client.get("/people/address-book", headers={"Cookie": owner_cookies})
+        assert book.status == 200
+        assert "Add an address" in book.text
+        assert "Empty book" in book.text
+
+        added = await client.post(
+            "/contacts/add",
+            data={
+                "_csrf_token": _csrf(book),
+                "handle": "maya@garden",
+                "display_name": "Maya",
+            },
+            headers={"Cookie": owner_cookies},
+        )
+        assert added.status == 200
+        assert "Maya" in added.text
+        assert "maya@garden" in added.text
+        assert "Pending" in added.text
+
+
 async def test_mail_seal_inbox_act_calendar_wall(service: PidgeService) -> None:
     owner = service.setup(
         bootstrap_token="development-bootstrap-token",
