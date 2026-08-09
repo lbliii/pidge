@@ -49,12 +49,18 @@ MCP_TOOLS: tuple[dict[str, str], ...] = (
     },
     {
         "name": "list_contacts",
-        "description": "List the owner's address book.",
+        "description": (
+            "List the owner's address book (local addressing only; "
+            "not cross-loft delivery)."
+        ),
         "scopes": "pidge:draft",
     },
     {
         "name": "add_contact",
-        "description": "Add an external contact to the address book.",
+        "description": (
+            "Add an external contact for local addressing on this loft "
+            "(not cross-loft delivery)."
+        ),
         "scopes": "pidge:draft",
     },
     {
@@ -219,6 +225,12 @@ def llms_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "- Confirm: Desk + propose_seal (one-shot human challenge URL)",
         "- Autopilot: Confirm + seal_pidge over MCP — never paste into shared chats",
         "",
+        "## Addressing",
+        "",
+        "- Same loft: `list_directory` — local members",
+        "- Beyond: `list_contacts` / `add_contact` — local address book only",
+        "- Address book ≠ delivery: sealed packets stay on this loft until federation",
+        "",
         "## Optional",
         "",
         f"- [Source]({GITHUB_REPO})",
@@ -285,6 +297,7 @@ def llms_full_txt(origin: str, *, loft_name: str = "Pidge") -> str:
         "- Expect anonymous MCP — bearer required",
         "- Call seal_pidge without an Autopilot token the human knowingly minted",
         "- Paste Autopilot secrets into shared chats or tickets",
+        "- Treat Beyond contacts as delivery to another loft — address book is local only",
         "",
     ]
     return "\n".join(body)

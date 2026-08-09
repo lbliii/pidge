@@ -74,6 +74,10 @@ async def test_people_address_book_uses_field_and_empty_state(app) -> None:
         assert 'aria-label="People facet"' in page.text
         assert 'href="/people"' in page.text
         assert 'style="color:#8b3a2a"' not in page.text
+        # #102: address book ≠ cross-loft delivery
+        assert "Address book ≠ delivery" in page.text
+        assert "not a path to another loft" in page.text
+        assert "Cross-loft delivery waits on federation" in page.text
 
 
 @pytest.mark.asyncio

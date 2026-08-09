@@ -388,6 +388,8 @@ async def test_people_hub_introduce_accept_and_address_book(app, service: PidgeS
         assert book.status == 200
         assert "Add an address" in book.text
         assert "Empty book" in book.text
+        assert "Address book ≠ delivery" in book.text
+        assert "Cross-loft delivery waits on federation" in book.text
 
         added = await client.post(
             "/contacts/add",
@@ -402,6 +404,7 @@ async def test_people_hub_introduce_accept_and_address_book(app, service: PidgeS
         assert "Maya" in added.text
         assert "maya@garden" in added.text
         assert "Pending" in added.text
+        assert "not delivered elsewhere" in added.text
 
 
 async def test_mail_seal_inbox_act_calendar_wall(service: PidgeService) -> None:

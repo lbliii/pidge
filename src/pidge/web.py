@@ -286,7 +286,13 @@ def create_app(
             for u in service.directory(owner)
         ]
 
-    @app.tool("list_contacts", description="List the owner's address book.")
+    @app.tool(
+        "list_contacts",
+        description=(
+            "List the owner's address book (local addressing only; "
+            "not cross-loft delivery)."
+        ),
+    )
     def list_contacts_tool() -> list[dict[str, Any]]:
         _, owner = require_agent("pidge:draft")
         return [
@@ -301,7 +307,13 @@ def create_app(
             for c in service.contacts(owner)
         ]
 
-    @app.tool("add_contact", description="Add an external contact to the address book.")
+    @app.tool(
+        "add_contact",
+        description=(
+            "Add an external contact for local addressing on this loft "
+            "(not cross-loft delivery)."
+        ),
+    )
     def add_contact_tool(handle: str, display_name: str = "") -> dict[str, Any]:
         _, owner = require_agent("pidge:draft")
         contact = service.add_external_contact(owner, handle=handle, display_name=display_name)
