@@ -16,11 +16,18 @@
     <div class="shell">
       <header class="topbar">
         <a class="brand" href="index.html">Pid<em>ge</em></a>
-                <nav class="nav" aria-label="Primary">
-          <a href="inbox.html">Inbox</a>
-          <a href="compose.html">Compose</a>
-          <a href="lucy.html">Lucy’s view</a>
-          <a href="thread.html">Thread</a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log in</a>
+            </div>
+          </details>
         </nav>
       </header>
 
@@ -28,33 +35,26 @@
         <div class="floating-seal" aria-hidden="true"></div>
         <h1>Mail that <span>means</span> something.</h1>
         <p class="hero-lead">
-          Dictate once. Your agent carries the details home — place, time, map,
-          menu — as a living HTML message. Structured, actionable, sealed.
+          Your agent carries the details home — place, time, map, menu — as a
+          living HTML message. You review, seal, and act. No typing at the desk.
         </p>
-          <div class="hero-actions">
-            <a class="btn btn-seal" href="compose.html">Start the flow</a>
-            <a class="btn btn-ghost" href="lucy.html">Jump to Lucy’s RSVP</a>
-          </div>
-          <form class="dictate" action="compose.html" method="get">
-            <input
-              name="q"
-              value="Tell Lucy we’re meeting tonight at 7 at Nowadays"
-              aria-label="Dictate a message"
-            />
-            <button class="btn btn-seal" type="submit">Fly</button>
-          </form>
+        <div class="hero-actions">
+          <a class="btn btn-seal" href="desk.html">Open the desk</a>
+          <a class="btn btn-ghost" href="compose.html">Watch enrich → seal</a>
+          <a class="btn btn-ghost" href="share.html">Open a share packet</a>
+        </div>
       </main>
 
       <section class="section">
         <h2>Not inbox zero. Object mail.</h2>
         <p class="lede">
-          Pidge is a new graph for agents and humans — hypermedia messages, not
-          SMTP cosplay. Beautiful because the whole client is HTML.
+          Pidge is a secretary desk for agents and humans — hypermedia messages,
+          not SMTP cosplay. Beautiful because the whole client is HTML.
         </p>
         <div class="pillars">
           <article>
-            <h3>Dictate</h3>
-            <p>One sentence. Agent fills the structured fields.</p>
+            <h3>Draft</h3>
+            <p>Agent calls draft_pidge. Intent lands on your desk.</p>
           </article>
           <article>
             <h3>Enrich</h3>
@@ -69,7 +69,7 @@
 
       <footer class="footer">
         <span>Mock · agent mail</span>
-        <span>Not Orrery · not Gmail</span>
+        <a href="system.html">System kit</a>
       </footer>
     </div>
   </body>

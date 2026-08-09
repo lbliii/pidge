@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Desk — Pidge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="flow.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="index.html">Pid<em>ge</em></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="desk.html" aria-current="page">Desk</a>
+          <a href="inbox.html">Mail</a>
+          <a href="#people">People</a>
+          <details class="nav-account">
+            <summary>Account</summary>
+            <div class="account-menu">
+              <a href="agents.html">Agents</a>
+              <a href="system.html">System kit</a>
+              <a href="login.html">Log out</a>
+            </div>
+          </details>
+        </nav>
+      </header>
+
+      <section class="hero" style="min-height: auto; padding: 1.5rem 0 2rem">
+        <div class="floating-seal" aria-hidden="true"></div>
+        <p class="kicker">Your loft</p>
+        <h1>What needs <span>you</span>.</h1>
+        <p class="hero-lead">
+          Draft → Enrich → Seal. Your agent gathers the packet; you decide.
+          Calendar and wall stay quiet until a sealed Pidge leaves residue.
+        </p>
+        <div class="hero-actions" style="margin-bottom: 0">
+          <a class="btn btn-seal" href="compose.html">Open compose</a>
+          <a class="btn btn-ghost" href="agents.html">Agents</a>
+        </div>
+      </section>
+
+      <div class="blotter">
+        <p class="blotter-lead">
+          One stack for decisions. Not a dashboard of equal pillars.
+        </p>
+
+        <h2 class="kit-label" style="margin-bottom: 0.75rem">Needs you</h2>
+        <div class="needs-stack">
+          <a class="needs-row" href="compose.html">
+            <span class="mark warn" aria-hidden="true">!</span>
+            <div>
+              <strong>Tonight at Nowadays</strong>
+              <div class="why">Slots ready — seal to send to Lucy</div>
+              <span class="badge ready">Ready to seal</span>
+            </div>
+            <span class="row-actions">
+              <span class="btn btn-seal" style="pointer-events: none">Seal</span>
+            </span>
+          </a>
+          <a class="needs-row" href="compose.html">
+            <span class="mark agent" aria-hidden="true">…</span>
+            <div>
+              <strong>Brunch with Sam</strong>
+              <div class="why">Draft → Enrich in progress · where pending</div>
+              <span class="badge enriching">Enriching</span>
+            </div>
+            <time>now</time>
+          </a>
+          <a class="needs-row" href="lucy.html">
+            <span class="mark" aria-hidden="true">L</span>
+            <div>
+              <strong>Open as Lucy</strong>
+              <div class="why">Demo hop — recipient needs an act</div>
+              <span class="badge invite">Invite · needs act</span>
+            </div>
+            <time>6:12 PM</time>
+          </a>
+        </div>
+
+        <div class="quiet-strip">
+          <h3>Mail peek</h3>
+          <div class="object-list">
+            <a class="object-row" href="thread.html">
+              <span class="mark" aria-hidden="true">L</span>
+              <div>
+                <strong>Lucy accepted</strong>
+                <div class="preview">RSVP yes · calendar added · Nowadays 7pm</div>
+                <span class="badge">Result · verified</span>
+              </div>
+              <time>6:14 PM</time>
+            </a>
+          </div>
+
+          <h3>Coming up</h3>
+          <div class="hold-strip">
+            <div>
+              <strong>Tonight at Nowadays</strong>
+              <div class="hint" style="margin: 0">7:00 PM · confirmed</div>
+            </div>
+            <a href="thread.html">Pidge</a>
+          </div>
+
+          <h3>Wall</h3>
+          <div class="pin-card">
+            <strong>Menu notes · Nowadays</strong>
+            <a href="thread.html">Source</a>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <span>Mock · desk blotter</span>
+        <span>Needs you first · residue below</span>
+      </footer>
+    </div>
+  </body>
+</html>
