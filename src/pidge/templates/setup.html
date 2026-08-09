@@ -7,27 +7,33 @@
     <h1>Claim this loft</h1>
   </div>
 </div>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 <form method="post" action="/setup" class="compose-panel">
   {{ csrf_field() }}
-  <label>Bootstrap token
-    <input name="bootstrap_token" required {% if show_development_hint %}placeholder="development-bootstrap-token"{% end %}>
-  </label>
-  {% if show_development_hint %}
-  <p class="hint">Dev default: <code>development-bootstrap-token</code></p>
-  {% end %}
-  <label>Loft name
-    <input name="loft_name" value="{{ values.loft_name }}" required>
-  </label>
-  <label>Username
-    <input name="username" value="{{ values.username }}" required>
-  </label>
-  <label>Display name
-    <input name="display_name" value="{{ values.display_name }}">
-  </label>
-  <label>Password
-    <input name="password" type="password" required minlength="10">
-  </label>
+  <div class="field">
+    <label for="bootstrap_token">Bootstrap token</label>
+    <input id="bootstrap_token" name="bootstrap_token" required {% if show_development_hint %}placeholder="development-bootstrap-token"{% end %}>
+    {% if show_development_hint %}
+    <p class="field-hint">Dev default: <code>development-bootstrap-token</code></p>
+    {% end %}
+  </div>
+  <div class="field">
+    <label for="loft_name">Loft name</label>
+    <input id="loft_name" name="loft_name" value="{{ values.loft_name }}" required>
+  </div>
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" value="{{ values.username }}" required autocomplete="username">
+  </div>
+  <div class="field">
+    <label for="display_name">Display name</label>
+    <input id="display_name" name="display_name" value="{{ values.display_name }}" autocomplete="name">
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password">
+    <p class="field-hint">At least 10 characters.</p>
+  </div>
   <button class="btn btn-seal" type="submit">Open the loft</button>
 </form>
 {% end %}

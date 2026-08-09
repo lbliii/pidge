@@ -7,39 +7,66 @@
     <h1>Who’s here</h1>
   </div>
 </div>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 <p class="lede">Anyone in this loft can be addressed without a prior friend edge.</p>
-<ul>
+
+{% if people %}
+<ul class="person-list">
   {% for person in people %}
-  <li>
-    <strong>{{ person.display_name }}</strong> · @{{ person.username }}
-    <form method="post" action="/directory/connect" style="display:inline">
-      {{ csrf_field() }}
-      <input type="hidden" name="username" value="{{ person.username }}">
-      <button class="btn btn-ghost" type="submit">Request connection</button>
-    </form>
+  <li class="person-row">
+    <span class="mark seal" aria-hidden="true">{{ (person.display_name or "?")[:1] }}</span>
+    <div>
+      <strong>{{ person.display_name }}</strong>
+      <div class="meta">@{{ person.username }}</div>
+    </div>
+    <div class="row-actions">
+      <form method="post" action="/directory/connect">
+        {{ csrf_field() }}
+        <input type="hidden" name="username" value="{{ person.username }}">
+        <button class="btn btn-ghost" type="submit">Request</button>
+      </form>
+    </div>
   </li>
-  {% else %}
-  <li class="hint">You’re the only one here. Invite someone to register.</li>
   {% end %}
 </ul>
-<section>
+{% else %}
+<div class="empty-state">
+  <h3>You’re the only one here</h3>
+  <p>Invite someone to register into this loft.</p>
+  <a class="btn btn-seal" href="/register">Open register</a>
+</div>
+{% end %}
+
+<section class="section" style="margin-top: var(--space-7)">
   <h2>Connection requests</h2>
-  <ul>
+  {% if requests %}
+  <ul class="object-list">
     {% for req in requests %}
-    <li>
-      #{{ req.id }} · from {{ req.from_user_id }} → {{ req.to_user_id or req.external_handle }} · {{ req.status }}
-      {% if req.to_user_id == viewer.id and req.status == "pending" %}
-      <form method="post" action="/directory/accept" style="display:inline">
-        {{ csrf_field() }}
-        <input type="hidden" name="request_id" value="{{ req.id }}">
-        <button class="btn btn-seal" type="submit">Accept</button>
-      </form>
-      {% end %}
+    <li class="object-row">
+      <span class="mark{% if req.status == 'pending' %} warn{% end %}" aria-hidden="true">#</span>
+      <div>
+        <strong>#{{ req.id }}</strong>
+        <div class="preview">
+          from {{ req.from_user_id }} → {{ req.to_user_id or req.external_handle }} · {{ req.status }}
+        </div>
+      </div>
+      <div class="row-actions">
+        {% if req.to_user_id == viewer.id and req.status == "pending" %}
+        <form method="post" action="/directory/accept">
+          {{ csrf_field() }}
+          <input type="hidden" name="request_id" value="{{ req.id }}">
+          <button class="btn btn-seal" type="submit">Accept</button>
+        </form>
+        {% end %}
+      </div>
     </li>
-    {% else %}
-    <li class="hint">None.</li>
     {% end %}
   </ul>
+  {% else %}
+  <div class="empty-state">
+    <h3>No requests</h3>
+    <p>Connection asks from loft mates will land here.</p>
+  </div>
+  {% end %}
 </section>
 {% end %}

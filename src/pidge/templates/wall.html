@@ -8,12 +8,21 @@
   </div>
 </div>
 {% if pins %}
-<ul>
+<ul class="object-list">
   {% for p in pins %}
-  <li><a href="/p/{{ p.pidge_id }}">{{ p.title }}</a></li>
+  <li class="object-row">
+    <span class="mark" aria-hidden="true">P</span>
+    <div>
+      <strong><a href="/p/{{ p.pidge_id }}">{{ p.title }}</a></strong>
+      <div class="preview">Pinned note</div>
+    </div>
+  </li>
   {% end %}
 </ul>
 {% else %}
-<p class="hint">Pin sealed Pidges from a thread.</p>
+<div class="empty-state">
+  <h3>Bare wall</h3>
+  <p>Pin sealed Pidges from a thread.</p>
+</div>
 {% end %}
 {% end %}

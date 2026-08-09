@@ -7,11 +7,17 @@
     <h1>Log in</h1>
   </div>
 </div>
-{% if error %}<p class="hint" style="color:#8b3a2a">{{ error }}</p>{% end %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% end %}
 <form method="post" action="/login" class="compose-panel">
   {{ csrf_field() }}
-  <label>Username <input name="username" required></label>
-  <label>Password <input name="password" type="password" required></label>
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" required autocomplete="username">
+  </div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+  </div>
   <button class="btn btn-seal" type="submit">Enter</button>
 </form>
 <p class="hint"><a href="/register">Register another loft member</a></p>
