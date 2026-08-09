@@ -18,6 +18,7 @@ from pidge.web import (
     _tool_event_touches_draft,
     create_app,
 )
+from tests.helpers import connect_loft_mates
 
 
 @pytest.fixture
@@ -107,6 +108,8 @@ async def test_compose_page_wires_sse_without_self_swap(
         owner = service.store.get_user_by_username("owner")
         assert owner is not None
         service.register(username="lucy", display_name="Lucy", password="password-long")
+        lucy = service.store.get_user_by_username("lucy")
+        connect_loft_mates(service, owner, lucy)
         draft = service.draft_pidge(owner, intent="Meet Lucy", recipient_names=["Lucy"])
 
         page = await client.get(f"/compose/{draft.id}", headers={"Cookie": cookies})
@@ -148,6 +151,8 @@ async def test_compose_live_updates_after_enrich(app, service: PidgeService) -> 
         owner = service.store.get_user_by_username("owner")
         assert owner is not None
         service.register(username="lucy", display_name="Lucy", password="password-long")
+        lucy = service.store.get_user_by_username("lucy")
+        connect_loft_mates(service, owner, lucy)
         draft = service.draft_pidge(
             owner, intent="Meet Lucy tonight", recipient_names=["Lucy"]
         )
