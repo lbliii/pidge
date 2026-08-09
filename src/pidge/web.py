@@ -16,6 +16,7 @@ from chirp.http.request import Request
 from chirp.http.response import Redirect, Response
 from chirp.middleware.auth import AuthConfig, AuthMiddleware, get_user
 from chirp.middleware.auth_rate_limit import AuthRateLimitConfig, AuthRateLimitMiddleware
+from chirp.middleware.csp_nonce import CSPNonceMiddleware
 from chirp.middleware.csrf import CSRFConfig
 from chirp.middleware.security_headers import SecurityHeadersConfig
 from chirp.middleware.stack import secure_stack
@@ -38,13 +39,17 @@ TEMPLATES = ROOT / "templates"
 STATIC = ROOT / "static"
 SESSION_COOKIE = "pidge_session"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
-CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
+# script-src is appended by CSPNonceMiddleware with the per-request nonce;
+# everything else is ours. Chirp injects inline bootstraps (safe-target,
+# sse-lifecycle) that only a nonce can allow without 'unsafe-inline'.
+CSP_BASE = (
+    "default-src 'self'; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data:; connect-src 'self'; base-uri 'self'; "
     "form-action 'self'; frame-ancestors 'none'; object-src 'none'"
 )
+SCRIPT_ORIGINS = "https://cdn.jsdelivr.net"
 
 
 def create_app(
@@ -93,7 +98,9 @@ def create_app(
     for middleware in secure_stack(
         app_config,
         csrf=CSRFConfig(exempt_paths=frozenset({"/mcp"})),
-        headers=SecurityHeadersConfig(content_security_policy=CONTENT_SECURITY_POLICY),
+        # CSP is owned by CSPNonceMiddleware below; two middlewares emitting the
+        # header would have the browser enforce both policies.
+        headers=SecurityHeadersConfig(content_security_policy=None),
     ):
         app.add_middleware(middleware, priority=0)
 
@@ -105,6 +112,9 @@ def create_app(
         priority=1,
     )
     app.add_middleware(StaticFiles(directory=str(STATIC), prefix="/static"), priority=20)
+    # Inside StaticFiles (assets need no nonce) but outside Chirp's builtin
+    # inject middleware, so its snippets render with the live nonce.
+    app.add_middleware(_csp_nonce_middleware(), priority=21)
 
     def viewer(request: Request) -> User | None:
         return service.current_user(_cookie(request))
@@ -834,6 +844,14 @@ def create_app(
         )
 
     return app
+
+
+def _csp_nonce_middleware() -> CSPNonceMiddleware:
+    middleware = CSPNonceMiddleware(base_csp=CSP_BASE)
+    # Chirp defaults script-src to unpkg + jsdelivr; the desk only loads
+    # jsdelivr. Slotted attribute — a rename upstream fails loudly at startup.
+    middleware._script_origins = SCRIPT_ORIGINS
+    return middleware
 
 
 def _can_seal(msg: Any) -> bool:
